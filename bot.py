@@ -10,7 +10,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
+    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove,
+    WebAppInfo
 )
 import aiosqlite
 import os
@@ -201,8 +202,14 @@ db = Database()
 
 
 # ===== KEYBOARDS =====
+MINI_APP_URL = "https://qarshiyevziyodulla57-glitch.github.io/Sarichashma-Santexnika/miniapp/"
+
 def main_menu_kb():
     b = ReplyKeyboardBuilder()
+    b.row(KeyboardButton(
+        text="🛒 Do'konni ochish",
+        web_app=WebAppInfo(url=MINI_APP_URL)
+    ))
     b.row(KeyboardButton(text="🛍 Katalog"), KeyboardButton(text="🛒 Savatim"))
     b.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
     b.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
@@ -791,6 +798,69 @@ async def do_broadcast(message: Message, state: FSMContext):
 @dp.message(F.text == "🔙 Asosiy menyu")
 async def back_main(message: Message):
     await message.answer("Asosiy menyu:", reply_markup=main_menu_kb())
+
+
+
+# ===== MINI APP HANDLER =====
+@dp.message(F.web_app_data)
+async def handle_web_app_data(message: Message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        name     = data.get("name", "Noma'lum")
+        phone    = data.get("phone", "-")
+        address  = data.get("address", "-")
+        delivery = data.get("delivery", "Kuryer")
+        payment  = data.get("payment", "Naqd")
+        note     = data.get("note")
+        items    = data.get("items", [])
+        total    = data.get("total", 0)
+
+        await db.add_user(message.from_user.id, name, message.from_user.username)
+
+        oid = await db.create_order(
+            user_id=message.from_user.id,
+            items=items,
+            total_price=total,
+            address=address,
+            phone=phone,
+            note=f"To'lov: {payment} | {note or ''}"
+        )
+
+        items_text = "\n".join([f"• {i['name']} x{i['qty']} — {i['price']*i['qty']:,.0f} so'm" for i in items])
+        await message.answer(
+            f"✅ <b>Buyurtmangiz qabul qilindi!</b>\n\n"
+            f"🔖 Buyurtma #{oid}\n\n"
+            f"{items_text}\n\n"
+            f"💰 Jami: <b>{total:,.0f} so'm</b>\n"
+            f"🚚 Yetkazib berish: {delivery}\n"
+            f"💳 To'lov: {payment}\n"
+            f"📍 {address}\n"
+            f"📱 {phone}\n\n"
+            f"⏳ Tez orada operatorimiz bog'lanadi!",
+            reply_markup=main_menu_kb(),
+            parse_mode="HTML"
+        )
+
+        user = message.from_user
+        await bot.send_message(
+            ADMIN_ID,
+            f"🆕 <b>YANGI BUYURTMA #{oid}</b> (Mini App)\n\n"
+            f"👤 {name}\n"
+            f"🔗 @{user.username or '-'} | 🆔 {user.id}\n\n"
+            f"🛒 {items_text}\n\n"
+            f"💰 {total:,.0f} so'm\n"
+            f"🚚 {delivery}\n"
+            f"💳 {payment}\n"
+            f"📍 {address}\n"
+            f"📱 {phone}"
+            f"{chr(10)+'📝 '+note if note else ''}",
+            reply_markup=order_status_kb(oid),
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+        logger.error(f"Mini App data xatosi: {e}")
+        await message.answer("❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.")
 
 
 # ===== MAIN =====
