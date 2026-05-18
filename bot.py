@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7151724014"))
 
-# Railway persistent volume yoki oddiy papka
 DATA_DIR = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
 DB_PATH = os.path.join(DATA_DIR, "santexnika.db")
 
@@ -108,7 +107,9 @@ class Database:
 
     async def get_all_products(self):
         async with aiosqlite.connect(DB_PATH) as db:
-            c = await db.execute("SELECT p.*, c.name as cat_name, c.emoji as cat_emoji FROM products p JOIN categories c ON p.category_id=c.id WHERE p.is_active=1")
+            c = await db.execute("""SELECT p.*, c.name as cat_name, c.emoji as cat_emoji
+                FROM products p JOIN categories c ON p.category_id=c.id
+                WHERE p.is_active=1 ORDER BY p.id DESC""")
             return await c.fetchall()
 
     async def add_product(self, category_id, name, description, price, stock, old_price=None, image_url=None):
@@ -207,7 +208,31 @@ class Database:
 db = Database()
 
 
-# ===== API SERVER (Mini App uchun) =====
+# ===== CORS HELPER =====
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+def cors_response(data=None, status=200, text=None):
+    """JSON yoki text response with CORS headers"""
+    if text is not None:
+        return web.Response(text=text, status=status, headers=CORS_HEADERS)
+    return web.Response(
+        text=json.dumps(data, ensure_ascii=False),
+        content_type="application/json",
+        status=status,
+        headers=CORS_HEADERS
+    )
+
+
+# ===== API SERVER =====
+async def api_options(request):
+    """CORS preflight uchun"""
+    return web.Response(status=200, headers=CORS_HEADERS)
+
+
 async def api_products(request):
     """Mini App ga mahsulotlar va kategoriyalarni JSON ko'rinishida beradi"""
     try:
@@ -218,6 +243,12 @@ async def api_products(request):
 
         prods_list = []
         for p in products:
+            image_url = p[6]
+            # Agar Telegram file_id bo'lsa (http emas), None qilamiz
+            # Mini App uchun faqat HTTP URL kerak
+            if image_url and not image_url.startswith("http"):
+                image_url = None
+
             prods_list.append({
                 "id": p[0],
                 "category_id": p[1],
@@ -225,33 +256,52 @@ async def api_products(request):
                 "description": p[3] or "",
                 "price": p[4],
                 "old_price": p[5],
-                "image_url": p[6],
+                "image_url": image_url,
                 "stock": p[7],
-                "cat_name": p[10],   # JOIN natijasi
-                "cat_emoji": p[11],  # JOIN natijasi
+                "cat_name": p[10],
+                "cat_emoji": p[11],
             })
 
         data = {"categories": cats_list, "products": prods_list}
-        return web.Response(
-            text=json.dumps(data, ensure_ascii=False),
-            content_type="application/json",
-            headers={"Access-Control-Allow-Origin": "*"}
-        )
+        return cors_response(data)
+
     except Exception as e:
         logger.error(f"API xatosi: {e}")
-        return web.Response(
-            text=json.dumps({"error": str(e)}),
-            content_type="application/json",
-            status=500,
-            headers={"Access-Control-Allow-Origin": "*"}
-        )
+        return cors_response({"error": str(e)}, status=500)
+
+
+async def api_promotions(request):
+    """Mini App ga aksiyalarni beradi"""
+    try:
+        promos = await db.get_active_promotions()
+        promo_list = []
+        for p in promos:
+            promo_list.append({
+                "id": p[0],
+                "title": p[1],
+                "description": p[2] or "",
+                "discount_percent": p[3],
+                "image_url": p[4] if p[4] and p[4].startswith("http") else None,
+                "expires_at": p[6] or "",
+            })
+        return cors_response({"promotions": promo_list})
+    except Exception as e:
+        logger.error(f"Promo API xatosi: {e}")
+        return cors_response({"error": str(e)}, status=500)
+
 
 async def api_health(request):
-    return web.Response(text="OK")
+    return cors_response(text="OK")
+
 
 async def start_api_server():
     app = web.Application()
+    # CORS preflight
+    app.router.add_route("OPTIONS", "/api/products", api_options)
+    app.router.add_route("OPTIONS", "/api/promotions", api_options)
+    # Asosiy endpointlar
     app.router.add_get("/api/products", api_products)
+    app.router.add_get("/api/promotions", api_promotions)
     app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
@@ -268,16 +318,15 @@ def main_menu_kb():
         text="🛒 Do'konni ochish",
         web_app=WebAppInfo(url=MINI_APP_URL)
     ))
-    # "🛍 Katalog" tugmasi olib tashlandi
     b.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
-    b.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
+    b.row(KeyboardButton(text="📞 Bog'lanish"), KeyboardButton(text="ℹ️ Haqimizda"))
     return b.as_markup(resize_keyboard=True)
 
 def admin_kb():
     b = ReplyKeyboardBuilder()
     b.row(KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📦 Buyurtmalar"))
-    b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
-    b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="👥 Mijozlar"))
+    b.row(KeyboardButton(text="➕ Mahsulot qo'shish"), KeyboardButton(text="🗂 Mahsulotlar"))
+    b.row(KeyboardButton(text="🎉 Aksiya qo'shish"), KeyboardButton(text="👥 Mijozlar"))
     b.row(KeyboardButton(text="📢 Xabar yuborish"), KeyboardButton(text="🔙 Asosiy menyu"))
     return b.as_markup(resize_keyboard=True)
 
@@ -298,7 +347,7 @@ def products_kb(products):
 
 def product_detail_kb(pid):
     b = InlineKeyboardBuilder()
-    b.button(text="🛒 Savatga qoshish", callback_data=f"addcart_{pid}")
+    b.button(text="🛒 Savatga qo'shish", callback_data=f"addcart_{pid}")
     b.button(text="🔙 Orqaga", callback_data="back_to_cats")
     b.adjust(1)
     return b.as_markup()
@@ -313,8 +362,11 @@ def cart_kb(cart_items):
     return b.as_markup()
 
 def order_status_kb(oid):
-    statuses = [("🆕 Yangi","yangi"),("⚙️ Jarayonda","jarayonda"),
-                ("🚚 Yetkazilmoqda","yetkazilmoqda"),("✅ Yetkazildi","yetkazildi"),("❌ Bekor","bekor")]
+    statuses = [
+        ("🆕 Yangi","yangi"),("⚙️ Jarayonda","jarayonda"),
+        ("🚚 Yetkazilmoqda","yetkazilmoqda"),("✅ Yetkazildi","yetkazildi"),
+        ("❌ Bekor qilindi","bekor")
+    ]
     b = InlineKeyboardBuilder()
     for label, status in statuses:
         b.button(text=label, callback_data=f"setstatus_{oid}_{status}")
@@ -339,7 +391,7 @@ def phone_kb():
 def products_manage_kb():
     b = InlineKeyboardBuilder()
     b.button(text="✏️ Tahrirlash", callback_data="manage_edit")
-    b.button(text="🗑 Ochirish", callback_data="manage_delete")
+    b.button(text="🗑 O'chirish", callback_data="manage_delete")
     b.adjust(2)
     return b.as_markup()
 
@@ -350,7 +402,7 @@ def edit_field_kb():
     b.button(text="💰 Narx", callback_data="edit_price")
     b.button(text="💸 Eski narx", callback_data="edit_old_price")
     b.button(text="📦 Ombor", callback_data="edit_stock")
-    b.button(text="🖼 Rasm", callback_data="edit_image")
+    b.button(text="🖼 Rasm URL", callback_data="edit_image")
     b.adjust(2)
     return b.as_markup()
 
@@ -414,7 +466,7 @@ async def show_products(callback: CallbackQuery):
     cat_id = int(callback.data.split("_")[1])
     products = await db.get_products_by_category(cat_id)
     if not products:
-        await callback.answer("Bu kategoriyada mahsulot yoq", show_alert=True)
+        await callback.answer("Bu kategoriyada mahsulot yo'q", show_alert=True)
         return
     await callback.message.edit_text(f"🔧 <b>Mahsulotlar ({len(products)} ta):</b>",
         reply_markup=products_kb(products), parse_mode="HTML")
@@ -431,8 +483,16 @@ async def show_product(callback: CallbackQuery):
         disc = int((1 - p[4]/p[5]) * 100)
         price_text = f"💰 Narxi: <b>{p[4]:,.0f} so'm</b>\n<s>{p[5]:,.0f} so'm</s> 🔴 -{disc}%"
     stock_text = f"✅ Mavjud: {p[7]} dona" if p[7] > 0 else "❌ Mavjud emas"
-    text = f"🔧 <b>{p[2]}</b>\n\n{p[3] or 'Tavsif yoq'}\n\n{price_text}\n{stock_text}"
-    if p[6]:
+    text = f"🔧 <b>{p[2]}</b>\n\n{p[3] or 'Tavsif yo\'q'}\n\n{price_text}\n{stock_text}"
+    if p[6] and p[6].startswith("http"):
+        try:
+            await callback.message.answer_photo(photo=p[6], caption=text,
+                reply_markup=product_detail_kb(pid), parse_mode="HTML")
+            await callback.message.delete()
+            return
+        except: pass
+    elif p[6] and not p[6].startswith("http"):
+        # Telegram file_id
         try:
             await callback.message.answer_photo(photo=p[6], caption=text,
                 reply_markup=product_detail_kb(pid), parse_mode="HTML")
@@ -449,7 +509,7 @@ async def add_to_cart(callback: CallbackQuery):
         await callback.answer("Mahsulot mavjud emas!", show_alert=True)
         return
     await db.add_to_cart(callback.from_user.id, pid)
-    await callback.answer(f"✅ '{p[2]}' savatga qoshildi!", show_alert=True)
+    await callback.answer(f"✅ '{p[2]}' savatga qo'shildi!", show_alert=True)
 
 
 # ===== CART & ORDERS =====
@@ -457,7 +517,7 @@ async def add_to_cart(callback: CallbackQuery):
 async def show_cart(message: Message):
     cart = await db.get_cart(message.from_user.id)
     if not cart:
-        await message.answer("🛒 Savatingiz bosh!\n\nDo'konni ochib mahsulot tanlang.", reply_markup=main_menu_kb())
+        await message.answer("🛒 Savatingiz bo'sh!\n\nDo'konni ochib mahsulot tanlang.", reply_markup=main_menu_kb())
         return
     total = sum(i[4] for i in cart)
     text = "🛒 <b>Savatingiz:</b>\n\n"
@@ -471,7 +531,7 @@ async def remove_from_cart(callback: CallbackQuery):
     await db.remove_from_cart(int(callback.data.split("_")[1]))
     cart = await db.get_cart(callback.from_user.id)
     if not cart:
-        await callback.message.edit_text("🛒 Savat bosh!")
+        await callback.message.edit_text("🛒 Savat bo'sh!")
         return
     total = sum(i[4] for i in cart)
     text = "🛒 <b>Savatingiz:</b>\n\n"
@@ -489,7 +549,7 @@ async def clear_cart(callback: CallbackQuery):
 async def checkout(callback: CallbackQuery, state: FSMContext):
     cart = await db.get_cart(callback.from_user.id)
     if not cart:
-        await callback.answer("Savat bosh!", show_alert=True)
+        await callback.answer("Savat bo'sh!", show_alert=True)
         return
     await state.set_state(OrderState.waiting_phone)
     await callback.message.answer("📱 Telefon raqamingizni yuboring:", reply_markup=phone_kb())
@@ -511,13 +571,17 @@ async def got_phone_text(message: Message, state: FSMContext):
 async def got_address(message: Message, state: FSMContext):
     await state.update_data(address=message.text)
     await state.set_state(OrderState.waiting_note)
-    await message.answer("📝 Qoshimcha izoh (yoq bolsa: Yoq deb yozing):")
+    await message.answer("📝 Qo'shimcha izoh (yo'q bo'lsa: Yo'q deb yozing):")
 
 @dp.message(OrderState.waiting_note)
 async def got_note(message: Message, state: FSMContext):
     data = await state.get_data()
-    note = None if message.text.lower() in ["yoq","-"] else message.text
+    note = None if message.text.lower() in ["yoq","yo'q","-"] else message.text
     cart = await db.get_cart(message.from_user.id)
+    if not cart:
+        await message.answer("❌ Savat bo'sh!", reply_markup=main_menu_kb())
+        await state.clear()
+        return
     total = sum(i[4] for i in cart)
     items = [{"name":i[1],"price":i[2],"qty":i[3]} for i in cart]
     oid = await db.create_order(message.from_user.id, items, total, data["address"], data["phone"], note)
@@ -527,7 +591,7 @@ async def got_note(message: Message, state: FSMContext):
     await message.answer(
         f"✅ <b>Buyurtmangiz qabul qilindi!</b>\n\n🔖 Buyurtma #{oid}\n\n{items_text}\n\n"
         f"💰 Jami: <b>{total:,.0f} so'm</b>\n📍 {data['address']}\n📱 {data['phone']}\n\n"
-        f"⏳ Tez orada operatorimiz boglanadi!",
+        f"⏳ Tez orada operatorimiz bog'lanadi!",
         reply_markup=main_menu_kb(), parse_mode="HTML")
     user = message.from_user
     await bot.send_message(ADMIN_ID,
@@ -554,33 +618,47 @@ async def my_orders(message: Message):
 async def show_promos(message: Message):
     promos = await db.get_active_promotions()
     if not promos:
-        await message.answer("😔 Hozircha faol aksiyalar yoq. Tez orada yangi aksiyalar boladi! 🎉", reply_markup=main_menu_kb())
+        await message.answer("😔 Hozircha faol aksiyalar yo'q. Tez orada yangi aksiyalar bo'ladi! 🎉", reply_markup=main_menu_kb())
         return
     text = "🎉 <b>Joriy aksiyalar:</b>\n\n"
     for p in promos:
-        text += f"🔥 <b>{p[1]}</b>\n{p[2] or ''}\n{'💸 Chegirma: '+str(p[3])+'%' if p[3] else ''}\n{'📅 '+p[6] if p[6] else ''}\n\n"
+        text += f"🔥 <b>{p[1]}</b>\n"
+        if p[2]: text += f"{p[2]}\n"
+        if p[3]: text += f"💸 Chegirma: {p[3]}%\n"
+        if p[6]: text += f"📅 Muddat: {p[6]}\n"
+        text += "\n"
     await message.answer(text, parse_mode="HTML", reply_markup=main_menu_kb())
 
-@dp.message(F.text == "📞 Boglanish")
+@dp.message(F.text == "📞 Bog'lanish")
 async def contact(message: Message):
     await message.answer(
-        "📞 <b>Biz bilan boglanish:</b>\n\n📱 Tel: +998 88 894 59 00\n📱 Tel: +998 94 282 62 66\n"
-        "📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n⏰ 07:00 - 20:00\n"
-        "💬 https://t.me/sarichashma_santexnika", parse_mode="HTML")
+        "📞 <b>Biz bilan bog'lanish:</b>\n\n"
+        "📱 Tel: +998 88 894 59 00\n"
+        "📱 Tel: +998 94 282 62 66\n"
+        "📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n"
+        "⏰ 07:00 - 20:00\n"
+        "💬 https://t.me/sarichashma_santexnika",
+        parse_mode="HTML")
 
 @dp.message(F.text == "ℹ️ Haqimizda")
 async def about(message: Message):
     await message.answer(
-        "ℹ️ <b>Sarichashma Santexnika</b>\n\nBiz santexnika va elektrika mahsulotlari sohasida xizmat korsatamiz.\n\n"
-        "Bizda mavjud:\n• Santexnika mahsulotlari\n• Elektrika mahsulotlari\n\n"
-        "📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n⏰ 07:00 - 20:00", parse_mode="HTML")
+        "ℹ️ <b>Sarichashma Santexnika</b>\n\n"
+        "Biz santexnika va elektrika mahsulotlari sohasida xizmat ko'rsatamiz.\n\n"
+        "Bizda mavjud:\n"
+        "• Kranlar va quvurlar\n• Dushlar va vannalar\n"
+        "• Nasoslar va filtrlar\n• Isitish tizimlari\n"
+        "• Elektrika mahsulotlari\n\n"
+        "📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n"
+        "⏰ 07:00 - 20:00",
+        parse_mode="HTML")
 
 
 # ===== ADMIN =====
 @dp.message(Command("admin"))
 async def admin_panel(message: Message):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("Siz admin emassiz!")
+        await message.answer("❌ Siz admin emassiz!")
         return
     await message.answer("🔐 <b>Admin Panel</b>", reply_markup=admin_kb(), parse_mode="HTML")
 
@@ -588,7 +666,13 @@ async def admin_panel(message: Message):
 async def stats(message: Message):
     if message.from_user.id != ADMIN_ID: return
     s = await db.get_stats()
-    await message.answer(f"📊 <b>Statistika</b>\n\n👥 Mijozlar: <b>{s['users']}</b>\n📦 Buyurtmalar: <b>{s['orders']}</b>\n🆕 Yangi: <b>{s['new_orders']}</b>\n💰 Daromad: <b>{s['revenue']:,.0f} so'm</b>", parse_mode="HTML")
+    await message.answer(
+        f"📊 <b>Statistika</b>\n\n"
+        f"👥 Mijozlar: <b>{s['users']}</b>\n"
+        f"📦 Buyurtmalar: <b>{s['orders']}</b>\n"
+        f"🆕 Yangi: <b>{s['new_orders']}</b>\n"
+        f"💰 Daromad: <b>{s['revenue']:,.0f} so'm</b>",
+        parse_mode="HTML")
 
 @dp.message(F.text == "📦 Buyurtmalar")
 async def admin_orders(message: Message):
@@ -602,16 +686,24 @@ async def filter_orders(callback: CallbackQuery):
     status = None if val == "all" else val
     orders = await db.get_all_orders(status)
     if not orders:
-        await callback.message.edit_text("Buyurtmalar yoq.")
+        await callback.message.edit_text("Buyurtmalar yo'q.")
         return
     for o in orders[:15]:
         try: items = json.loads(o[2])
         except: items = []
-        items_text = "\n".join([f"  - {i['name']} x{i['qty']}" for i in items])
+        items_text = "\n".join([f"  - {i['name']} x{i.get('qty',1)}" for i in items])
         emoji = STATUS_EMOJI.get(o[6], "📦")
         await callback.message.answer(
-            f"Buyurtma #{o[0]}\n{emoji} {o[6]}\nUser: {o[1]}\n{items_text}\n{o[3]:,.0f} so'm\n{o[4]}\n{o[5]}",
-            reply_markup=order_status_kb(o[0]))
+            f"🔖 <b>Buyurtma #{o[0]}</b>\n"
+            f"{emoji} <b>{o[6]}</b>\n"
+            f"👤 ID: {o[1]}\n"
+            f"🛒 {items_text}\n"
+            f"💰 {o[3]:,.0f} so'm\n"
+            f"📍 {o[4]}\n"
+            f"📱 {o[5]}"
+            f"{chr(10)+'📝 '+o[7] if o[7] else ''}",
+            reply_markup=order_status_kb(o[0]),
+            parse_mode="HTML")
     await callback.message.delete()
 
 @dp.callback_query(F.data.startswith("setstatus_"))
@@ -625,15 +717,18 @@ async def set_status(callback: CallbackQuery):
     order = await db.get_order(oid)
     if order:
         try:
-            await bot.send_message(order[1], f"📦 <b>Buyurtma #{oid} holati yangilandi!</b>\n\n{emoji} <b>{new_status}</b>", parse_mode="HTML")
+            await bot.send_message(
+                order[1],
+                f"📦 <b>Buyurtma #{oid} holati yangilandi!</b>\n\n{emoji} <b>{new_status}</b>",
+                parse_mode="HTML")
         except: pass
 
-@dp.message(F.text == "➕ Mahsulot qoshish")
+@dp.message(F.text == "➕ Mahsulot qo'shish")
 async def add_product_start(message: Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID: return
     cats = await db.get_categories()
-    text = "📂 <b>Kategoriya raqamini tanlang:</b>\n\n"
-    for c in cats: text += f"{c[0]}. {c[2]} {c[1]}\n"
+    text = "📂 <b>Kategoriya raqamini kiriting:</b>\n\n"
+    for c in cats: text += f"<b>{c[0]}.</b> {c[2]} {c[1]}\n"
     await state.set_state(AddProductState.category)
     await message.answer(text, parse_mode="HTML")
 
@@ -643,31 +738,31 @@ async def ap_category(message: Message, state: FSMContext):
         await state.update_data(category_id=int(message.text))
         await state.set_state(AddProductState.name)
         await message.answer("📝 Mahsulot nomini kiriting:")
-    except: await message.answer("Raqam kiriting!")
+    except: await message.answer("❌ Raqam kiriting!")
 
 @dp.message(AddProductState.name)
 async def ap_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(AddProductState.description)
-    await message.answer("📄 Tavsif kiriting (yoq bolsa: Yoq):")
+    await message.answer("📄 Tavsif kiriting (yo'q bo'lsa: Yo'q):")
 
 @dp.message(AddProductState.description)
 async def ap_desc(message: Message, state: FSMContext):
-    await state.update_data(description=None if message.text.lower() in ["yoq","-"] else message.text)
+    await state.update_data(description=None if message.text.lower() in ["yoq","yo'q","-"] else message.text)
     await state.set_state(AddProductState.price)
-    await message.answer("💰 Narxini kiriting (somda):")
+    await message.answer("💰 Narxini kiriting (so'mda):")
 
 @dp.message(AddProductState.price)
 async def ap_price(message: Message, state: FSMContext):
     try:
         await state.update_data(price=float(message.text.replace(" ","").replace(",","")))
         await state.set_state(AddProductState.old_price)
-        await message.answer("💸 Eski narxini kiriting (yoq bolsa: Yoq):")
-    except: await message.answer("Togri narx kiriting!")
+        await message.answer("💸 Eski narxini kiriting (yo'q bo'lsa: Yo'q):")
+    except: await message.answer("❌ To'g'ri narx kiriting!")
 
 @dp.message(AddProductState.old_price)
 async def ap_old_price(message: Message, state: FSMContext):
-    if message.text.lower() in ["yoq","-"]: await state.update_data(old_price=None)
+    if message.text.lower() in ["yoq","yo'q","-"]: await state.update_data(old_price=None)
     else:
         try: await state.update_data(old_price=float(message.text.replace(" ","").replace(",","")))
         except: await state.update_data(old_price=None)
@@ -679,25 +774,33 @@ async def ap_stock(message: Message, state: FSMContext):
     try:
         await state.update_data(stock=int(message.text))
         await state.set_state(AddProductState.image)
-        await message.answer("🖼 Rasmini yuboring (yoq bolsa: Yoq):")
-    except: await message.answer("Raqam kiriting!")
+        await message.answer(
+            "🖼 Rasm URL kiriting (masalan: https://example.com/img.jpg)\n"
+            "Yo'q bo'lsa: <b>Yo'q</b>",
+            parse_mode="HTML")
+    except: await message.answer("❌ Raqam kiriting!")
 
 @dp.message(AddProductState.image, F.photo)
 async def ap_image_photo(message: Message, state: FSMContext):
+    # Telegram file_id saqlash (bot chat ichida ko'rsatish uchun)
     data = await state.get_data()
     await db.add_product(data["category_id"], data["name"], data.get("description"),
         data["price"], data["stock"], data.get("old_price"), message.photo[-1].file_id)
     await state.clear()
-    await message.answer(f"✅ <b>'{data['name']}'</b> rasmli holda qoshildi!", reply_markup=admin_kb(), parse_mode="HTML")
+    await message.answer(
+        f"✅ <b>'{data['name']}'</b> qo'shildi!\n\n"
+        f"⚠️ Eslatma: Bot chat ichida rasm ko'rinadi, lekin Mini Appda ko'rinmaydi.\n"
+        f"Mini App uchun HTTP URL kiriting (masalan: https://... dan boshlangan link).",
+        reply_markup=admin_kb(), parse_mode="HTML")
 
 @dp.message(AddProductState.image, F.text)
 async def ap_image_text(message: Message, state: FSMContext):
     data = await state.get_data()
-    img = None if message.text.lower() in ["yoq","-"] else message.text
+    img = None if message.text.lower() in ["yoq","yo'q","-"] else message.text
     await db.add_product(data["category_id"], data["name"], data.get("description"),
         data["price"], data["stock"], data.get("old_price"), img)
     await state.clear()
-    await message.answer(f"✅ <b>'{data['name']}'</b> qoshildi!", reply_markup=admin_kb(), parse_mode="HTML")
+    await message.answer(f"✅ <b>'{data['name']}'</b> qo'shildi!", reply_markup=admin_kb(), parse_mode="HTML")
 
 
 # ===== MANAGE PRODUCTS =====
@@ -706,10 +809,10 @@ async def manage_products(message: Message):
     if message.from_user.id != ADMIN_ID: return
     products = await db.get_all_products()
     if not products:
-        await message.answer("Mahsulotlar yoq.")
+        await message.answer("Mahsulotlar yo'q.")
         return
     text = "🗂 <b>Mahsulotlar:</b>\n\n"
-    for p in products:
+    for p in products[:20]:
         text += f"🔹 <b>ID:{p[0]}</b> — {p[2]} — {p[4]:,.0f} so'm (ombor: {p[7]})\n"
     await message.answer(text, parse_mode="HTML", reply_markup=products_manage_kb())
 
@@ -723,7 +826,7 @@ async def manage_edit(callback: CallbackQuery, state: FSMContext):
 async def manage_delete(callback: CallbackQuery, state: FSMContext):
     await state.set_state(EditProductState.select)
     await state.update_data(action="delete")
-    await callback.message.answer("🗑 Ochirish uchun mahsulot ID sini kiriting:")
+    await callback.message.answer("🗑 O'chirish uchun mahsulot ID sini kiriting:")
 
 @dp.message(EditProductState.select)
 async def ep_select(message: Message, state: FSMContext):
@@ -731,17 +834,17 @@ async def ep_select(message: Message, state: FSMContext):
         pid = int(message.text)
         p = await db.get_product(pid)
         if not p:
-            await message.answer("Topilmadi!")
+            await message.answer("❌ Topilmadi!")
             return
         data = await state.get_data()
         if data.get("action") == "delete":
             await db.delete_product(pid)
             await state.clear()
-            await message.answer(f"✅ '{p[2]}' ochirildi!", reply_markup=admin_kb())
+            await message.answer(f"✅ '{p[2]}' o'chirildi!", reply_markup=admin_kb())
         else:
             await state.update_data(product_id=pid)
             await state.set_state(EditProductState.field)
-            await message.answer(f"✏️ <b>'{p[2]}'</b> — qaysi maydonni ozgartirmoqchisiz?",
+            await message.answer(f"✏️ <b>'{p[2]}'</b> — qaysi maydonni o'zgartirmoqchisiz?",
                 reply_markup=edit_field_kb(), parse_mode="HTML")
     except ValueError: await message.answer("Faqat raqam kiriting!")
 
@@ -750,8 +853,14 @@ async def ep_field(callback: CallbackQuery, state: FSMContext):
     field = callback.data.replace("edit_","")
     await state.update_data(field=field)
     await state.set_state(EditProductState.value)
-    prompts = {"name":"📝 Yangi nom:","description":"📄 Yangi tavsif (yoq: Yoq):","price":"💰 Yangi narx:",
-               "old_price":"💸 Yangi eski narx (yoq: Yoq):","stock":"📦 Yangi miqdor:","image":"🖼 Yangi rasmni yuboring:"}
+    prompts = {
+        "name":"📝 Yangi nom:",
+        "description":"📄 Yangi tavsif (yo'q: Yo'q):",
+        "price":"💰 Yangi narx:",
+        "old_price":"💸 Yangi eski narx (yo'q: Yo'q):",
+        "stock":"📦 Yangi miqdor:",
+        "image":"🖼 Yangi rasm URL (https://... bilan boshlangan):"
+    }
     await callback.message.answer(prompts.get(field,"Yangi qiymat:"))
 
 @dp.message(EditProductState.value, F.photo)
@@ -759,7 +868,7 @@ async def ep_photo(message: Message, state: FSMContext):
     data = await state.get_data()
     await db.update_product_field(data["product_id"], "image_url", message.photo[-1].file_id)
     await state.clear()
-    await message.answer("✅ Rasm yangilandi!", reply_markup=admin_kb())
+    await message.answer("✅ Rasm yangilandi! (Mini App uchun HTTP URL kiriting)", reply_markup=admin_kb())
 
 @dp.message(EditProductState.value, F.text)
 async def ep_value(message: Message, state: FSMContext):
@@ -769,12 +878,12 @@ async def ep_value(message: Message, state: FSMContext):
     value = message.text
     if data["field"] == "price":
         try: value = float(value.replace(" ","").replace(",",""))
-        except: await message.answer("Togri raqam!"); return
+        except: await message.answer("❌ To'g'ri raqam!"); return
     elif data["field"] == "stock":
         try: value = int(value)
-        except: await message.answer("Togri raqam!"); return
+        except: await message.answer("❌ To'g'ri raqam!"); return
     elif data["field"] in ["description","old_price","image"]:
-        if value.lower() in ["yoq","-"]: value = None
+        if value.lower() in ["yoq","yo'q","-"]: value = None
         elif data["field"] == "old_price":
             try: value = float(value.replace(" ","").replace(",",""))
             except: value = None
@@ -784,7 +893,7 @@ async def ep_value(message: Message, state: FSMContext):
 
 
 # ===== PROMO ADMIN =====
-@dp.message(F.text == "🎉 Aksiya qoshish")
+@dp.message(F.text == "🎉 Aksiya qo'shish")
 async def promo_start(message: Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID: return
     await state.set_state(AddPromoState.title)
@@ -794,30 +903,30 @@ async def promo_start(message: Message, state: FSMContext):
 async def promo_title(message: Message, state: FSMContext):
     await state.update_data(title=message.text)
     await state.set_state(AddPromoState.description)
-    await message.answer("📄 Tavsif (yoq: Yoq):")
+    await message.answer("📄 Tavsif (yo'q: Yo'q):")
 
 @dp.message(AddPromoState.description)
 async def promo_desc(message: Message, state: FSMContext):
-    await state.update_data(description=None if message.text.lower() in ["yoq","-"] else message.text)
+    await state.update_data(description=None if message.text.lower() in ["yoq","yo'q","-"] else message.text)
     await state.set_state(AddPromoState.discount)
-    await message.answer("💸 Chegirma % (yoq: Yoq):")
+    await message.answer("💸 Chegirma % (yo'q: Yo'q):")
 
 @dp.message(AddPromoState.discount)
 async def promo_discount(message: Message, state: FSMContext):
-    if message.text.lower() in ["yoq","-"]: await state.update_data(discount=None)
+    if message.text.lower() in ["yoq","yo'q","-"]: await state.update_data(discount=None)
     else:
         try: await state.update_data(discount=int(message.text))
         except: await state.update_data(discount=None)
     await state.set_state(AddPromoState.expires)
-    await message.answer("📅 Muddat (masalan: 31.12.2025) yoq: Yoq:")
+    await message.answer("📅 Muddat (masalan: 31.12.2025) yo'q: Yo'q:")
 
 @dp.message(AddPromoState.expires)
 async def promo_expires(message: Message, state: FSMContext):
-    expires = None if message.text.lower() in ["yoq","-"] else message.text
+    expires = None if message.text.lower() in ["yoq","yo'q","-"] else message.text
     data = await state.get_data()
     await db.add_promotion(data["title"], data.get("description"), data.get("discount"), expires)
     await state.clear()
-    await message.answer(f"✅ Aksiya qoshildi: <b>{data['title']}</b>", reply_markup=admin_kb(), parse_mode="HTML")
+    await message.answer(f"✅ Aksiya qo'shildi: <b>{data['title']}</b>", reply_markup=admin_kb(), parse_mode="HTML")
 
 
 # ===== USERS & BROADCAST =====
@@ -844,6 +953,7 @@ async def do_broadcast(message: Message, state: FSMContext):
         try:
             await bot.send_message(u[1], f"📢 {message.text}")
             sent += 1
+            await asyncio.sleep(0.05)  # Flood limitga yo'l qo'ymaslik
         except: pass
     await state.clear()
     await message.answer(f"✅ {sent} ta foydalanuvchiga yuborildi!", reply_markup=admin_kb())
@@ -918,7 +1028,7 @@ async def handle_web_app_data(message: Message):
 # ===== MAIN =====
 async def main():
     await db.create_tables()
-    # API server va botni parallel ishlatish
+    logger.info("Database tayyor!")
     await asyncio.gather(
         start_api_server(),
         dp.start_polling(bot)
