@@ -15,13 +15,19 @@ from aiogram.types import (
 )
 import aiosqlite
 import os
+from aiohttp import web
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7151724014"))
-DB_PATH = "santexnika.db"
+
+# Railway persistent volume yoki oddiy papka
+DATA_DIR = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
+DB_PATH = os.path.join(DATA_DIR, "santexnika.db")
+
+MINI_APP_URL = os.environ.get("MINI_APP_URL", "https://qarshiyevziyodulla57-glitch.github.io/Sarichashma-Santexnika/miniapp/")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -102,7 +108,7 @@ class Database:
 
     async def get_all_products(self):
         async with aiosqlite.connect(DB_PATH) as db:
-            c = await db.execute("SELECT p.*, c.name FROM products p JOIN categories c ON p.category_id=c.id WHERE p.is_active=1")
+            c = await db.execute("SELECT p.*, c.name as cat_name, c.emoji as cat_emoji FROM products p JOIN categories c ON p.category_id=c.id WHERE p.is_active=1")
             return await c.fetchall()
 
     async def add_product(self, category_id, name, description, price, stock, old_price=None, image_url=None):
@@ -201,16 +207,68 @@ class Database:
 db = Database()
 
 
-# ===== KEYBOARDS =====
-MINI_APP_URL = "https://qarshiyevziyodulla57-glitch.github.io/Sarichashma-Santexnika/miniapp/"
+# ===== API SERVER (Mini App uchun) =====
+async def api_products(request):
+    """Mini App ga mahsulotlar va kategoriyalarni JSON ko'rinishida beradi"""
+    try:
+        products = await db.get_all_products()
+        categories = await db.get_categories()
 
+        cats_list = [{"id": c[0], "name": c[1], "emoji": c[2]} for c in categories]
+
+        prods_list = []
+        for p in products:
+            prods_list.append({
+                "id": p[0],
+                "category_id": p[1],
+                "name": p[2],
+                "description": p[3] or "",
+                "price": p[4],
+                "old_price": p[5],
+                "image_url": p[6],
+                "stock": p[7],
+                "cat_name": p[10],   # JOIN natijasi
+                "cat_emoji": p[11],  # JOIN natijasi
+            })
+
+        data = {"categories": cats_list, "products": prods_list}
+        return web.Response(
+            text=json.dumps(data, ensure_ascii=False),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        logger.error(f"API xatosi: {e}")
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json",
+            status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+
+async def api_health(request):
+    return web.Response(text="OK")
+
+async def start_api_server():
+    app = web.Application()
+    app.router.add_get("/api/products", api_products)
+    app.router.add_get("/health", api_health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"API server started on port {port}")
+
+
+# ===== KEYBOARDS =====
 def main_menu_kb():
     b = ReplyKeyboardBuilder()
     b.row(KeyboardButton(
         text="🛒 Do'konni ochish",
         web_app=WebAppInfo(url=MINI_APP_URL)
     ))
-    b.row(KeyboardButton(text="🛍 Katalog"), KeyboardButton(text="🛒 Savatim"))
+    # "🛍 Katalog" tugmasi olib tashlandi
     b.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
     b.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
     return b.as_markup(resize_keyboard=True)
@@ -345,12 +403,7 @@ async def start(message: Message):
     await message.answer(text, reply_markup=main_menu_kb(), parse_mode="HTML")
 
 
-# ===== CATALOG =====
-@dp.message(F.text == "🛍 Katalog")
-async def show_catalog(message: Message):
-    cats = await db.get_categories()
-    await message.answer("📂 <b>Kategoriyani tanlang:</b>", reply_markup=categories_kb(cats), parse_mode="HTML")
-
+# ===== CATALOG (bot ichida) =====
 @dp.callback_query(F.data == "back_to_cats")
 async def back_to_cats(callback: CallbackQuery):
     cats = await db.get_categories()
@@ -404,7 +457,7 @@ async def add_to_cart(callback: CallbackQuery):
 async def show_cart(message: Message):
     cart = await db.get_cart(message.from_user.id)
     if not cart:
-        await message.answer("🛒 Savatingiz bosh!\n\nKatalogdan mahsulot tanlang.", reply_markup=main_menu_kb())
+        await message.answer("🛒 Savatingiz bosh!\n\nDo'konni ochib mahsulot tanlang.", reply_markup=main_menu_kb())
         return
     total = sum(i[4] for i in cart)
     text = "🛒 <b>Savatingiz:</b>\n\n"
@@ -800,7 +853,6 @@ async def back_main(message: Message):
     await message.answer("Asosiy menyu:", reply_markup=main_menu_kb())
 
 
-
 # ===== MINI APP HANDLER =====
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
@@ -866,7 +918,11 @@ async def handle_web_app_data(message: Message):
 # ===== MAIN =====
 async def main():
     await db.create_tables()
-    await dp.start_polling(bot)
+    # API server va botni parallel ishlatish
+    await asyncio.gather(
+        start_api_server(),
+        dp.start_polling(bot)
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
