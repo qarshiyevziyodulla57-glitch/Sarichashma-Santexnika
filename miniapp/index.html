@@ -21,11 +21,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:100}
 .header-top{display:flex;align-items:center;justify-content:space-between}
 .logo{font-size:16px;font-weight:600;color:var(--blue);display:flex;align-items:center;gap:6px}
-.logo svg{width:22px;height:22px}
 .cart-btn{position:relative;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
 .cart-btn svg{width:24px;height:24px}
 .badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;display:none;align-items:center;justify-content:center}
-
 .search{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--radius-sm);padding:0 12px;border:1px solid var(--border)}
 .search svg{width:16px;height:16px;color:var(--muted);flex-shrink:0}
 .search input{background:none;border:none;outline:none;font-size:14px;flex:1;padding:9px 0;color:var(--text)}
@@ -52,6 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .old-price{font-size:10px;color:var(--muted);text-decoration:line-through}
 .add-btn{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;transition:.15s;flex-shrink:0}
 .add-btn.in-cart{background:var(--teal)}
+.add-btn:disabled{background:var(--muted);cursor:not-allowed}
 .no-products{grid-column:span 2;text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
 
 /* BOTTOM NAV */
@@ -78,13 +77,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qty-num{font-size:13px;font-weight:600;min-width:16px;text-align:center}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--red);padding:4px;flex-shrink:0}
 .del-btn svg{width:18px;height:18px}
-
 .cart-summary{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-top:14px}
 .sum-row{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);padding:4px 0}
 .sum-row.total{font-size:16px;font-weight:700;color:var(--text);border-top:1px solid var(--border);margin-top:8px;padding-top:10px}
 .checkout-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px}
-.checkout-btn:active{opacity:.85}
-
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
 .empty p{font-size:14px;line-height:1.6}
@@ -99,22 +95,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .form-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font-size:14px;outline:none;-webkit-appearance:none}
 .form-input:focus{border-color:var(--blue)}
 .form-textarea{resize:none;height:72px}
-
 .delivery-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .d-opt{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;transition:.15s}
 .d-opt.sel{border-color:var(--blue);background:var(--blue-light)}
 .d-opt-name{font-size:13px;font-weight:600}
 .d-opt-price{font-size:12px;color:var(--muted);margin-top:2px}
-
 .pay-opts{display:flex;flex-direction:column;gap:8px}
 .p-opt{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px;cursor:pointer;transition:.15s}
 .p-opt.sel{border-color:var(--blue);background:var(--blue-light)}
 .p-opt-icon{font-size:18px}
 .p-opt-label{font-size:14px;font-weight:500}
-
 .submit-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
-.submit-btn:active{opacity:.85}
 .submit-btn:disabled{background:var(--muted);cursor:not-allowed}
+
+/* PROMOTIONS PAGE */
+.promo-page{padding:14px 16px}
+.promo-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
+.promo-banner{background:linear-gradient(135deg,var(--blue),#2e86de);padding:20px 16px;color:#fff;position:relative}
+.promo-discount{position:absolute;top:12px;right:12px;background:#fff;color:var(--blue);font-size:16px;font-weight:800;padding:6px 12px;border-radius:20px}
+.promo-title{font-size:17px;font-weight:700;margin-bottom:6px}
+.promo-desc{font-size:13px;opacity:.9;line-height:1.5}
+.promo-footer{padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.promo-expires{font-size:12px;color:var(--muted)}
+.promo-shop-btn{background:var(--blue-light);color:var(--blue);border:none;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
+.promo-empty{text-align:center;padding:60px 20px;color:var(--muted)}
 
 /* DETAIL */
 .detail{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--card);z-index:200;overflow-y:auto;display:none;flex-direction:column}
@@ -123,7 +127,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .back-btn{background:none;border:none;cursor:pointer;color:var(--text);padding:4px}
 .back-btn svg{width:22px;height:22px}
 .detail-title{font-size:16px;font-weight:600}
-.detail-img{font-size:72px;height:180px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+.detail-img{font-size:72px;height:200px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
 .detail-img img{width:100%;height:100%;object-fit:cover}
 .detail-body{padding:18px 16px;flex:1}
 .detail-name{font-size:19px;font-weight:700;margin-bottom:4px}
@@ -145,15 +149,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .detail-add-btn.added{background:var(--teal)}
 .detail-add-btn:disabled{background:var(--muted);cursor:not-allowed}
 
-/* SUCCESS */
-.success{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--card);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
-.success.open{display:flex}
-.success-icon{width:72px;height:72px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:36px}
-.success h2{font-size:22px;font-weight:700;margin-bottom:8px}
-.success p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
-.order-num{font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 20px;margin-bottom:24px;font-weight:600}
-.continue-btn{padding:12px 32px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer}
-
 /* PROFILE */
 .profile-page{padding:14px 16px}
 .profile-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px}
@@ -167,11 +162,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .menu-label{flex:1;font-size:14px}
 .menu-arrow{color:var(--muted);font-size:16px}
 
+/* LOADING / ERROR */
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:14px}
 .spin{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
-
 .error-box{background:#fde8e8;border:1px solid var(--red);border-radius:var(--radius-sm);padding:14px;margin:16px;font-size:13px;color:var(--red);text-align:center}
+
+/* SUCCESS */
+.success{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--card);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+.success.open{display:flex}
+.success-icon{width:72px;height:72px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:36px}
+.success h2{font-size:22px;font-weight:700;margin-bottom:8px}
+.success p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.order-num{font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 20px;margin-bottom:24px;font-weight:600}
+.continue-btn{padding:12px 32px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -180,21 +184,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="header">
   <div class="header-top">
     <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-      Sarichashma Santexnika
+      🔧 Sarichashma Santexnika
     </div>
     <button class="cart-btn" onclick="switchTab('cart')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
       <span class="badge" id="hBadge"></span>
     </button>
   </div>
-  <div class="search">
+  <div class="search" id="searchBox">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" placeholder="Mahsulot qidirish..." oninput="filterProds(this.value)" />
+    <input type="text" placeholder="Mahsulot qidirish..." oninput="filterProds(this.value)" id="searchInput" />
   </div>
 </div>
 
-<!-- CATS -->
+<!-- CATEGORIES -->
 <div class="cats" id="catList"></div>
 
 <!-- PAGES -->
@@ -218,11 +221,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="order-section">
       <div class="order-section-title">👤 Kontakt ma'lumotlar</div>
       <div class="form-group">
-        <label class="form-label">Ism familiya</label>
+        <label class="form-label">Ism familiya *</label>
         <input type="text" class="form-input" id="oName" placeholder="Alisher Karimov" />
       </div>
       <div class="form-group">
-        <label class="form-label">Telefon raqam</label>
+        <label class="form-label">Telefon raqam *</label>
         <input type="tel" class="form-input" id="oPhone" placeholder="+998 90 123 45 67" />
       </div>
     </div>
@@ -239,7 +242,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
       <div class="form-group" style="margin-top:12px" id="addrGroup">
-        <label class="form-label">Manzil</label>
+        <label class="form-label">Manzil *</label>
         <input type="text" class="form-input" id="oAddr" placeholder="Ko'cha, uy raqami..." />
       </div>
     </div>
@@ -267,6 +270,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- PROMOTIONS PAGE -->
+<div id="page-promos" class="page">
+  <div class="promo-page" id="promoContent">
+    <div class="loading">
+      <div class="spin"></div><br>Yuklanmoqda...
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE PAGE -->
 <div id="page-profile" class="page">
   <div class="profile-page">
     <div class="profile-card" id="profileCard">
@@ -286,6 +299,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="menu-item" onclick="switchTab('order')">
         <span class="menu-icon">📦</span><span class="menu-label">Buyurtma berish</span><span class="menu-arrow">›</span>
       </div>
+      <div class="menu-item" onclick="switchTab('promos')">
+        <span class="menu-icon">🎉</span><span class="menu-label">Aksiyalar</span><span class="menu-arrow">›</span>
+      </div>
     </div>
     <div class="menu-list">
       <div class="menu-item">
@@ -304,7 +320,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="switchTab('catalog')" id="nav-catalog">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/></svg>
     Katalog
   </button>
   <button class="nav-item" onclick="switchTab('cart')" id="nav-cart">
@@ -315,6 +331,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="nav-item" onclick="switchTab('order')" id="nav-order">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     Buyurtma
+  </button>
+  <button class="nav-item" onclick="switchTab('promos')" id="nav-promos">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Aksiyalar
   </button>
   <button class="nav-item" onclick="switchTab('profile')" id="nav-profile">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -337,6 +357,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="detail-prices" id="dPrices"></div>
     <div class="detail-stock" id="dStock"></div>
     <div class="detail-desc" id="dDesc"></div>
+    <div class="specs" id="dSpecs" style="display:none">
+      <div class="spec-row"><span class="spec-label">Kategoriya</span><span class="spec-val" id="dCat">-</span></div>
+      <div class="spec-row"><span class="spec-label">Mavjudlik</span><span class="spec-val" id="dStockNum">-</span></div>
+    </div>
     <button class="detail-add-btn" id="dAddBtn" onclick="addFromDetail()">
       🛒 Savatga qo'shish
     </button>
@@ -357,28 +381,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // TELEGRAM SETUP
 // ============================================================
 const tg = window.Telegram && window.Telegram.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) {
+  tg.ready();
+  tg.expand();
+  // Telegram tema ranglarini ishlatish
+  if (tg.colorScheme === 'dark') {
+    document.documentElement.style.setProperty('--bg', '#1a1a2e');
+  }
+}
 
 // ============================================================
-// API URL — bot.py dagi PORT bilan bir xil bo'lishi kerak
-// Railway da avtomatik to'g'ri ishlaydi (same origin)
+// API URL — Railway URL yoki ENV dan
 // ============================================================
-const API_URL = 'https://sarichashma-santexnika-production.up.railway.app/api/products';
+const API_BASE = 'https://sarichashma-santexnika-production.up.railway.app';
 
 // ============================================================
 // STATE
 // ============================================================
 let PRODUCTS = [];
 let CATS = [];
+let PROMOS = [];
 let cart = {};
-let currentCat = 0; // 0 = barchasi
+let currentCat = 0;
 let searchQ = '';
 let currentDetailId = null;
 let deliveryType = 'Kuryer';
 let payType = 'Naqd';
+let promosLoaded = false;
 
 // ============================================================
-// INIT — mahsulotlarni bazadan yukla
+// INIT
 // ============================================================
 async function init() {
   loadProfile();
@@ -388,9 +420,10 @@ async function init() {
 async function loadProducts() {
   const grid = document.getElementById('productsGrid');
   try {
-    const res = await fetch(API_URL);
+    const res = await fetch(API_BASE + '/api/products');
     if (!res.ok) throw new Error('Server xatosi: ' + res.status);
     const data = await res.json();
+    if (data.error) throw new Error(data.error);
 
     CATS = data.categories || [];
     PRODUCTS = data.products || [];
@@ -402,8 +435,28 @@ async function loadProducts() {
     grid.innerHTML = `<div class="error-box" style="grid-column:span 2">
       ❌ Mahsulotlarni yuklashda xatolik.<br>
       <small>${e.message}</small><br><br>
-      <button onclick="loadProducts()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">
+      <button onclick="loadProducts()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px">
         🔄 Qayta urinish
+      </button>
+    </div>`;
+  }
+}
+
+async function loadPromos() {
+  if (promosLoaded) return;
+  const cont = document.getElementById('promoContent');
+  try {
+    const res = await fetch(API_BASE + '/api/promotions');
+    if (!res.ok) throw new Error('Server xatosi: ' + res.status);
+    const data = await res.json();
+    PROMOS = data.promotions || [];
+    promosLoaded = true;
+    renderPromos();
+  } catch (e) {
+    cont.innerHTML = `<div class="error-box">
+      ❌ Aksiyalarni yuklashda xatolik.<br>
+      <button onclick="promosLoaded=false;loadPromos()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px">
+        🔄 Qayta
       </button>
     </div>`;
   }
@@ -413,7 +466,7 @@ function loadProfile() {
   if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
     const initials = ((u.first_name||'')[0]||'') + ((u.last_name||'')[0]||'');
-    document.getElementById('avatarEl').textContent = initials || '?';
+    document.getElementById('avatarEl').textContent = initials || '👤';
     document.getElementById('profileName').textContent = [u.first_name, u.last_name].filter(Boolean).join(' ');
     document.getElementById('profilePhone').textContent = u.username ? '@' + u.username : 'Telegram foydalanuvchi';
     document.getElementById('oName').value = [u.first_name, u.last_name].filter(Boolean).join(' ');
@@ -426,14 +479,11 @@ function loadProfile() {
 function buildCats() {
   const el = document.getElementById('catList');
   el.innerHTML = '';
-
-  // "Barchasi" tugmasi
   const all = document.createElement('div');
   all.className = 'cat-pill active';
   all.textContent = '🏠 Barchasi';
   all.onclick = () => selectCat(0, 'Barcha mahsulotlar', all);
   el.appendChild(all);
-
   CATS.forEach(c => {
     const d = document.createElement('div');
     d.className = 'cat-pill';
@@ -456,17 +506,6 @@ function selectCat(id, label, el) {
 // ============================================================
 function filterProds(q) { searchQ = q; renderProds(); }
 
-function getProductImage(p) {
-  if (p.image_url) {
-    // Telegram file_id emas, URL bo'lsa ko'rsatamiz
-    if (p.image_url.startsWith('http')) {
-      return `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='📦'">`;
-    }
-    // Telegram file_id bo'lsa emoji ko'rsatamiz (URL ga o'girish uchun backend kerak)
-  }
-  return p.cat_emoji || '📦';
-}
-
 function renderProds() {
   const grid = document.getElementById('productsGrid');
   const filtered = PRODUCTS.filter(p =>
@@ -474,19 +513,19 @@ function renderProds() {
     (!searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()) ||
      (p.description || '').toLowerCase().includes(searchQ.toLowerCase()))
   );
-
   if (!filtered.length) {
-    grid.innerHTML = '<div class="no-products">Mahsulot topilmadi 🔍</div>';
+    grid.innerHTML = `<div class="no-products">
+      ${searchQ ? '🔍 Qidiruv natijasi topilmadi' : '📦 Bu kategoriyada mahsulot yo\'q'}
+    </div>`;
     return;
   }
-
   grid.innerHTML = filtered.map(p => {
     const inC = !!cart[p.id];
-    const disc = p.old_price ? Math.round((1 - p.price/p.old_price)*100) : 0;
-    const imgContent = getProductImage(p);
     const isUrl = p.image_url && p.image_url.startsWith('http');
     return `<div class="product-card" onclick="openDetail(${p.id})">
-      <div class="product-img">${isUrl ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='📦'">` : (p.cat_emoji || '📦')}</div>
+      <div class="product-img">${isUrl
+        ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">` 
+        : (p.cat_emoji || '📦')}</div>
       <div class="product-info">
         <div class="product-name">${p.name}</div>
         <div class="product-brand">${p.cat_name || ''}</div>
@@ -497,7 +536,7 @@ function renderProds() {
           </div>
           <button class="add-btn ${inC?'in-cart':''}"
             onclick="event.stopPropagation();toggleCart(${p.id},this)"
-            ${p.stock===0?'disabled':''}>
+            ${p.stock===0?'disabled title="Mavjud emas"':''}>
             ${inC?'✓':'+'}
           </button>
         </div>
@@ -511,8 +550,7 @@ function renderProds() {
 // ============================================================
 function toggleCart(id, btn) {
   if (cart[id]) { delete cart[id]; } else { cart[id] = {qty:1}; }
-  renderProds();
-  updateBadge();
+  renderProds(); updateBadge();
   if (currentDetailId === id) updateDetailBtn(id);
 }
 
@@ -545,7 +583,9 @@ function renderCart() {
     total += sub;
     const isUrl = p.image_url && p.image_url.startsWith('http');
     html += `<div class="cart-item">
-      <div class="cart-item-emoji">${isUrl ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='📦'">` : (p.cat_emoji || '📦')}</div>
+      <div class="cart-item-emoji">${isUrl
+        ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">`
+        : (p.cat_emoji || '📦')}</div>
       <div class="cart-item-info">
         <div class="cart-item-name">${p.name}</div>
         <div class="cart-item-sub">${p.price.toLocaleString()} so'm / dona</div>
@@ -569,9 +609,7 @@ function renderCart() {
     <div class="sum-row"><span>Mahsulotlar (${keys.length} tur)</span><span>${total.toLocaleString()} so'm</span></div>
     <div class="sum-row"><span>Yetkazib berish</span><span>${delivery ? delivery.toLocaleString()+' so\'m' : 'Bepul'}</span></div>
     <div class="sum-row total"><span>Jami</span><span>${(total+delivery).toLocaleString()} so'm</span></div>
-    <button class="checkout-btn" onclick="switchTab('order')">
-      ✅ Buyurtma rasmiylashtirish
-    </button>
+    <button class="checkout-btn" onclick="switchTab('order')">✅ Buyurtma rasmiylashtirish</button>
   </div>`;
   cont.innerHTML = html;
 }
@@ -586,6 +624,40 @@ function removeItem(id) {
 }
 
 // ============================================================
+// PROMOTIONS
+// ============================================================
+function renderPromos() {
+  const cont = document.getElementById('promoContent');
+  if (!PROMOS.length) {
+    cont.innerHTML = `<div class="promo-empty">
+      <div style="font-size:48px;margin-bottom:12px">🎉</div>
+      <p style="font-size:15px;font-weight:600;margin-bottom:8px">Hozircha aksiyalar yo'q</p>
+      <p style="font-size:13px;color:var(--muted)">Tez orada yangi aksiyalar bo'ladi!</p>
+    </div>`;
+    return;
+  }
+  const colors = [
+    'linear-gradient(135deg,#1d5fa8,#2e86de)',
+    'linear-gradient(135deg,#0d6e56,#1a9b78)',
+    'linear-gradient(135deg,#7b2d8b,#b44fcc)',
+    'linear-gradient(135deg,#c0392b,#e74c3c)',
+  ];
+  cont.innerHTML = PROMOS.map((p, i) => `
+    <div class="promo-card">
+      <div class="promo-banner" style="background:${colors[i % colors.length]}">
+        ${p.discount_percent ? `<div class="promo-discount">-${p.discount_percent}%</div>` : ''}
+        <div class="promo-title">${p.title}</div>
+        ${p.description ? `<div class="promo-desc">${p.description}</div>` : ''}
+      </div>
+      <div class="promo-footer">
+        <div class="promo-expires">${p.expires_at ? '📅 ' + p.expires_at + ' gacha' : '⏳ Muddatsiz'}</div>
+        <button class="promo-shop-btn" onclick="switchTab('catalog')">Xarid qilish →</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
 // PRODUCT DETAIL
 // ============================================================
 function openDetail(id) {
@@ -595,13 +667,16 @@ function openDetail(id) {
 
   const imgEl = document.getElementById('dImg');
   if (p.image_url && p.image_url.startsWith('http')) {
-    imgEl.innerHTML = `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='📦'">`;
+    imgEl.innerHTML = `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">`;
   } else {
     imgEl.textContent = p.cat_emoji || '📦';
   }
 
   document.getElementById('dName').textContent = p.name;
   document.getElementById('dBrand').textContent = p.cat_name || '';
+  document.getElementById('dCat').textContent = `${p.cat_emoji||''} ${p.cat_name||'-'}`;
+  document.getElementById('dStockNum').textContent = p.stock > 0 ? `${p.stock} dona` : 'Mavjud emas';
+  document.getElementById('dSpecs').style.display = 'block';
 
   const disc = p.old_price ? Math.round((1-p.price/p.old_price)*100) : 0;
   document.getElementById('dPrices').innerHTML = `
@@ -622,7 +697,7 @@ function updateDetailBtn(id) {
   const btn = document.getElementById('dAddBtn');
   const inC = !!cart[id];
   btn.className = 'detail-add-btn' + (inC ? ' added' : '');
-  btn.textContent = inC ? '✅ Savatda bor' : '🛒 Savatga qo\'shish';
+  btn.textContent = inC ? '✅ Savatda bor — Olib tashlash' : '🛒 Savatga qo\'shish';
   btn.disabled = p.stock === 0 && !inC;
 }
 
@@ -630,8 +705,7 @@ function addFromDetail() {
   if (cart[currentDetailId]) { delete cart[currentDetailId]; }
   else { cart[currentDetailId] = {qty:1}; }
   updateDetailBtn(currentDetailId);
-  updateBadge();
-  renderProds();
+  updateBadge(); renderProds();
 }
 
 function closeDetail() { document.getElementById('detailEl').classList.remove('open'); }
@@ -643,8 +717,15 @@ function switchTab(tab) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-'+tab).classList.add('active');
-  document.getElementById('nav-'+tab).classList.add('active');
+  const navEl = document.getElementById('nav-'+tab);
+  if (navEl) navEl.classList.add('active');
+
+  // Search faqat katalogda ko'rinsin
+  document.getElementById('searchBox').style.display = tab === 'catalog' ? 'flex' : 'none';
+  document.getElementById('catList').style.display = tab === 'catalog' ? 'flex' : 'none';
+
   if (tab === 'cart') renderCart();
+  if (tab === 'promos') loadPromos();
 }
 
 // ============================================================
@@ -670,13 +751,14 @@ async function submitOrder() {
   const addr = document.getElementById('oAddr').value.trim();
   const note = document.getElementById('oNote').value.trim();
 
-  if (!name) { alert('Ism familiyani kiriting!'); return; }
-  if (!phone) { alert('Telefon raqamni kiriting!'); return; }
-  if (deliveryType === 'Kuryer' && !addr) { alert('Manzilni kiriting!'); return; }
-  if (!Object.keys(cart).length) { alert('Savat bo\'sh!'); return; }
+  if (!name) { alert('❗ Ism familiyani kiriting!'); return; }
+  if (!phone) { alert('❗ Telefon raqamni kiriting!'); return; }
+  if (deliveryType === 'Kuryer' && !addr) { alert('❗ Manzilni kiriting!'); return; }
+  if (!Object.keys(cart).length) { alert('❗ Savat bo\'sh!'); return; }
 
   const btn = document.getElementById('submitBtn');
-  btn.disabled = true; btn.textContent = '⏳ Yuborilmoqda...';
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Yuborilmoqda...';
 
   const items = Object.keys(cart).map(id => {
     const p = PRODUCTS.find(x => x.id == id);
@@ -691,21 +773,22 @@ async function submitOrder() {
     delivery: deliveryType,
     payment: payType,
     note: note || null,
-    items,
-    total,
+    items, total,
     telegram_id: tg?.initDataUnsafe?.user?.id || null,
     telegram_username: tg?.initDataUnsafe?.user?.username || null,
     init_data: tg?.initData || null,
   };
 
-  if (tg) {
+  if (tg && tg.sendData) {
     tg.sendData(JSON.stringify(orderData));
   }
 
   const oid = 'SS-' + Math.floor(10000 + Math.random() * 90000);
   document.getElementById('orderNumEl').textContent = 'Buyurtma № ' + oid;
   document.getElementById('successEl').classList.add('open');
-  btn.disabled = false; btn.textContent = '✅ Buyurtma berish';
+
+  btn.disabled = false;
+  btn.innerHTML = '✅ Buyurtma berish';
 }
 
 function closeSuccess() {
