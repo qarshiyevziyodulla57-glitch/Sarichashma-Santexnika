@@ -2,224 +2,531 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Sarichashma Santexnika</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
 :root{
-  --bg:#f5f7fa;--card:#fff;--text:#1a1a2e;--muted:#6b7280;
-  --blue:#1d5fa8;--blue-light:#e8f1fb;--teal:#0d6e56;--teal-light:#e0f5ee;
-  --red:#e24b4a;--border:#e5e7eb;--radius:12px;--radius-sm:8px;
+  --blue:#1a5fb4;
+  --blue2:#2e86de;
+  --red:#e63946;
+  --red2:#ff6b6b;
+  --bg:#f0f4f9;
+  --card:#ffffff;
+  --text:#0d1b2a;
+  --muted:#6b7f99;
+  --border:#dde4ef;
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 4px 20px rgba(26,95,180,0.10);
+  --shadow-card:0 2px 12px rgba(26,95,180,0.08);
 }
-@media(prefers-color-scheme:dark){
-  :root{--bg:#1a1a2e;--card:#252540;--text:#f1f5f9;--muted:#94a3b8;--border:#334155;--blue-light:#1e3a5f;--teal-light:#0d3028}
+
+body{
+  font-family:'Nunito',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding-bottom:72px;
+  overflow-x:hidden;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:70px}
 
-/* HEADER */
-.header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:100}
-.header-top{display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:16px;font-weight:600;color:var(--blue);display:flex;align-items:center;gap:6px}
-.cart-btn{position:relative;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
-.cart-btn svg{width:24px;height:24px}
-.badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;display:none;align-items:center;justify-content:center}
-.search{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--radius-sm);padding:0 12px;border:1px solid var(--border)}
-.search svg{width:16px;height:16px;color:var(--muted);flex-shrink:0}
-.search input{background:none;border:none;outline:none;font-size:14px;flex:1;padding:9px 0;color:var(--text)}
+/* ── HEADER ── */
+.header{
+  background:linear-gradient(135deg, var(--blue) 0%, var(--blue2) 100%);
+  padding:14px 16px 20px;
+  position:sticky;top:0;z-index:100;
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.logo-wrap{display:flex;align-items:center;gap:10px}
+.logo-icon{
+  width:42px;height:42px;background:#fff;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);overflow:hidden;flex-shrink:0;
+}
+.logo-icon svg{width:28px;height:28px}
+.logo-text{color:#fff}
+.logo-name{font-size:15px;font-weight:900;letter-spacing:.3px;line-height:1.1}
+.logo-sub{font-size:10px;font-weight:600;opacity:.75;letter-spacing:.8px;text-transform:uppercase}
+.cart-fab{
+  position:relative;width:40px;height:40px;border-radius:12px;
+  background:rgba(255,255,255,.18);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  backdrop-filter:blur(6px);
+}
+.cart-fab svg{width:22px;height:22px}
+.badge{
+  position:absolute;top:-4px;right:-4px;
+  background:var(--red);color:#fff;font-size:10px;font-weight:800;
+  border-radius:50%;width:18px;height:18px;
+  display:none;align-items:center;justify-content:center;
+  border:2px solid var(--blue);
+}
 
-/* CATEGORIES */
-.cats{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;background:var(--card);scrollbar-width:none}
+.search-wrap{
+  background:rgba(255,255,255,.15);border-radius:12px;
+  display:flex;align-items:center;gap:8px;padding:0 12px;
+  border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px);
+}
+.search-wrap svg{width:16px;height:16px;color:rgba(255,255,255,.7);flex-shrink:0}
+.search-wrap input{
+  background:none;border:none;outline:none;color:#fff;
+  font-size:14px;font-family:'Nunito',sans-serif;flex:1;padding:10px 0;
+}
+.search-wrap input::placeholder{color:rgba(255,255,255,.6)}
+
+/* ── CATEGORIES ── */
+.cats-wrap{
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:12px 16px;
+}
+.cats{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .cats::-webkit-scrollbar{display:none}
-.cat-pill{display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:13px;white-space:nowrap;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:.15s}
-.cat-pill.active{background:var(--blue-light);color:var(--blue);border-color:#b5d4f4;font-weight:600}
+.cat-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  white-space:nowrap;cursor:pointer;border:2px solid var(--border);
+  background:var(--card);color:var(--muted);transition:all .18s;flex-shrink:0;
+}
+.cat-pill.active{
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border-color:transparent;
+  box-shadow:0 3px 10px rgba(26,95,180,.3);
+}
 
-/* PRODUCTS */
-.section{padding:14px 16px}
-.section-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.product-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;cursor:pointer;transition:.15s}
-.product-card:active{transform:scale(.98)}
-.product-img{height:96px;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--bg);overflow:hidden}
-.product-img img{width:100%;height:100%;object-fit:cover}
-.product-info{padding:10px}
-.product-name{font-size:12px;font-weight:600;line-height:1.3;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.product-brand{font-size:11px;color:var(--muted);margin-bottom:8px}
-.product-footer{display:flex;align-items:center;justify-content:space-between}
-.product-price{font-size:13px;font-weight:700;color:var(--blue)}
-.old-price{font-size:10px;color:var(--muted);text-decoration:line-through}
-.add-btn{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;transition:.15s;flex-shrink:0}
-.add-btn.in-cart{background:var(--teal)}
-.add-btn:disabled{background:var(--muted);cursor:not-allowed}
-.no-products{grid-column:span 2;text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
-
-/* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:10px;border:none;background:none;transition:.15s;position:relative}
-.nav-item svg{width:22px;height:22px}
-.nav-item.active{color:var(--blue)}
-.nav-badge{position:absolute;top:4px;right:calc(50% - 16px);background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:14px;height:14px;display:none;align-items:center;justify-content:center}
-
-/* PAGES */
+/* ── PAGES ── */
 .page{display:none}
 .page.active{display:block}
 
-/* CART PAGE */
-.cart-page{padding:14px 16px}
-.cart-item{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
-.cart-item-emoji{font-size:28px;width:46px;height:46px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.cart-item-emoji img{width:100%;height:100%;object-fit:cover}
+/* ── PRODUCT GRID ── */
+.section{padding:16px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-label{font-size:13px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.5px}
+.section-count{font-size:12px;color:var(--muted);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+
+.product-card{
+  background:var(--card);border-radius:var(--radius);
+  overflow:hidden;cursor:pointer;
+  box-shadow:var(--shadow-card);
+  transition:transform .15s,box-shadow .15s;
+  position:relative;
+}
+.product-card:active{transform:scale(.97)}
+.product-img{
+  height:110px;display:flex;align-items:center;
+  justify-content:center;font-size:42px;
+  background:linear-gradient(135deg,#f0f4f9,#e2eaf5);
+  overflow:hidden;position:relative;
+}
+.product-img img{width:100%;height:100%;object-fit:cover}
+.disc-tag{
+  position:absolute;top:8px;left:8px;
+  background:var(--red);color:#fff;
+  font-size:10px;font-weight:800;padding:2px 7px;
+  border-radius:6px;letter-spacing:.3px;
+}
+.product-info{padding:10px 10px 12px}
+.product-name{
+  font-size:12px;font-weight:700;line-height:1.35;margin-bottom:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.product-cat{font-size:10px;color:var(--muted);font-weight:600;margin-bottom:8px}
+.product-footer{display:flex;align-items:flex-end;justify-content:space-between}
+.price-col{}
+.product-price{font-size:13px;font-weight:800;color:var(--blue)}
+.old-price{font-size:10px;color:var(--muted);text-decoration:line-through;font-weight:600}
+.add-btn{
+  width:30px;height:30px;border-radius:10px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:300;line-height:1;
+  box-shadow:0 3px 8px rgba(26,95,180,.35);
+  transition:all .15s;flex-shrink:0;
+}
+.add-btn.in-cart{background:linear-gradient(135deg,#0d6e56,#1a9b78)}
+.add-btn:disabled{background:#c0ccdc;box-shadow:none;cursor:not-allowed}
+.no-stock-badge{
+  position:absolute;top:8px;right:8px;
+  background:rgba(230,57,70,.85);color:#fff;
+  font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;
+}
+.no-products{
+  grid-column:span 2;text-align:center;padding:48px 20px;
+  color:var(--muted);font-size:14px;font-weight:600;
+}
+
+/* ── CART PAGE ── */
+.cart-page{padding:16px}
+.cart-item{
+  background:var(--card);border-radius:var(--radius);
+  padding:12px;margin-bottom:10px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:var(--shadow-card);
+}
+.cart-item-img{
+  width:52px;height:52px;border-radius:12px;
+  background:var(--bg);overflow:hidden;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+}
+.cart-item-img img{width:100%;height:100%;object-fit:cover}
 .cart-item-info{flex:1;min-width:0}
-.cart-item-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cart-item-sub{font-size:12px;color:var(--muted);margin-top:2px}
-.qty-row{display:flex;align-items:center;gap:8px;margin-top:6px}
-.qty-btn{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text)}
-.qty-num{font-size:13px;font-weight:600;min-width:16px;text-align:center}
+.cart-item-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-item-sub{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600}
+.qty-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.qty-btn{
+  width:26px;height:26px;border-radius:8px;
+  border:2px solid var(--border);background:var(--bg);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--text);font-weight:700;
+}
+.qty-num{font-size:14px;font-weight:800;min-width:18px;text-align:center}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--red);padding:4px;flex-shrink:0}
 .del-btn svg{width:18px;height:18px}
-.cart-summary{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-top:14px}
-.sum-row{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);padding:4px 0}
-.sum-row.total{font-size:16px;font-weight:700;color:var(--text);border-top:1px solid var(--border);margin-top:8px;padding-top:10px}
-.checkout-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px}
-.empty{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
-.empty p{font-size:14px;line-height:1.6}
 
-/* ORDER PAGE */
-.order-page{padding:14px 16px}
-.order-section{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:12px}
-.order-section-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;color:var(--blue)}
-.form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block}
+.cart-summary{
+  background:var(--card);border-radius:var(--radius);
+  padding:16px;margin-top:12px;box-shadow:var(--shadow-card);
+}
+.sum-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:5px 0;font-weight:600}
+.sum-row.total{
+  font-size:17px;font-weight:800;color:var(--text);
+  border-top:2px solid var(--border);margin-top:8px;padding-top:12px;
+}
+.checkout-btn{
+  width:100%;padding:14px;margin-top:14px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 14px rgba(26,95,180,.35);
+  font-family:'Nunito',sans-serif;
+}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:56px;margin-bottom:14px;opacity:.4}
+.empty p{font-size:14px;font-weight:600;line-height:1.6}
+
+/* ── ORDER PAGE ── */
+.order-page{padding:16px}
+.order-section{
+  background:var(--card);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px;box-shadow:var(--shadow-card);
+}
+.order-section-title{
+  font-size:13px;font-weight:800;margin-bottom:14px;
+  display:flex;align-items:center;gap:7px;
+  color:var(--blue);text-transform:uppercase;letter-spacing:.4px;
+}
+.form-label{font-size:11px;color:var(--muted);margin-bottom:5px;display:block;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
 .form-group{margin-bottom:12px}
 .form-group:last-child{margin-bottom:0}
-.form-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font-size:14px;outline:none;-webkit-appearance:none}
-.form-input:focus{border-color:var(--blue)}
+.form-input{
+  width:100%;padding:11px 14px;border:2px solid var(--border);
+  border-radius:var(--radius-sm);background:var(--bg);
+  color:var(--text);font-size:14px;font-weight:600;
+  outline:none;font-family:'Nunito',sans-serif;
+  transition:border-color .15s;
+}
+.form-input:focus{border-color:var(--blue2)}
 .form-textarea{resize:none;height:72px}
-.delivery-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.d-opt{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;transition:.15s}
-.d-opt.sel{border-color:var(--blue);background:var(--blue-light)}
-.d-opt-name{font-size:13px;font-weight:600}
-.d-opt-price{font-size:12px;color:var(--muted);margin-top:2px}
-.pay-opts{display:flex;flex-direction:column;gap:8px}
-.p-opt{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px;cursor:pointer;transition:.15s}
-.p-opt.sel{border-color:var(--blue);background:var(--blue-light)}
-.p-opt-icon{font-size:18px}
-.p-opt-label{font-size:14px;font-weight:500}
-.submit-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
-.submit-btn:disabled{background:var(--muted);cursor:not-allowed}
 
-/* PROMOTIONS PAGE */
-.promo-page{padding:14px 16px}
-.promo-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
-.promo-banner{background:linear-gradient(135deg,var(--blue),#2e86de);padding:20px 16px;color:#fff;position:relative}
-.promo-discount{position:absolute;top:12px;right:12px;background:#fff;color:var(--blue);font-size:16px;font-weight:800;padding:6px 12px;border-radius:20px}
-.promo-title{font-size:17px;font-weight:700;margin-bottom:6px}
-.promo-desc{font-size:13px;opacity:.9;line-height:1.5}
-.promo-footer{padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
-.promo-expires{font-size:12px;color:var(--muted)}
-.promo-shop-btn{background:var(--blue-light);color:var(--blue);border:none;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
+.delivery-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.d-opt{
+  border:2px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 12px;cursor:pointer;transition:all .15s;background:var(--bg);
+}
+.d-opt.sel{border-color:var(--blue);background:rgba(26,95,180,.07)}
+.d-opt-name{font-size:13px;font-weight:800;color:var(--text)}
+.d-opt-price{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600}
+
+.pay-opts{display:flex;flex-direction:column;gap:8px}
+.p-opt{
+  display:flex;align-items:center;gap:12px;
+  border:2px solid var(--border);border-radius:var(--radius-sm);
+  padding:11px 14px;cursor:pointer;transition:all .15s;background:var(--bg);
+}
+.p-opt.sel{border-color:var(--blue);background:rgba(26,95,180,.07)}
+.p-opt-icon{font-size:20px}
+.p-opt-label{font-size:14px;font-weight:700}
+
+.submit-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:4px;box-shadow:0 4px 14px rgba(26,95,180,.35);
+  font-family:'Nunito',sans-serif;
+}
+.submit-btn:disabled{background:#c0ccdc;box-shadow:none;cursor:not-allowed}
+
+/* ── PROMOS ── */
+.promo-page{padding:16px}
+.promo-card{
+  background:var(--card);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow-card);
+}
+.promo-banner{
+  padding:22px 18px;color:#fff;position:relative;min-height:100px;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.promo-discount{
+  position:absolute;top:14px;right:14px;
+  background:#fff;font-size:17px;font-weight:900;
+  padding:5px 12px;border-radius:20px;
+}
+.promo-title{font-size:18px;font-weight:900;margin-bottom:6px}
+.promo-desc{font-size:13px;opacity:.9;line-height:1.5;font-weight:600}
+.promo-footer{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)}
+.promo-expires{font-size:12px;color:var(--muted);font-weight:700}
+.promo-shop-btn{
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;padding:7px 16px;
+  border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;
+  font-family:'Nunito',sans-serif;
+}
 .promo-empty{text-align:center;padding:60px 20px;color:var(--muted)}
 
-/* DETAIL */
-.detail{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--card);z-index:200;overflow-y:auto;display:none;flex-direction:column}
+/* ── PROFILE ── */
+.profile-page{padding:16px}
+.profile-hero{
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  border-radius:var(--radius);padding:20px 18px;
+  margin-bottom:14px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 4px 16px rgba(26,95,180,.3);
+}
+.avatar{
+  width:54px;height:54px;border-radius:16px;
+  background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:900;color:#fff;flex-shrink:0;
+}
+.profile-name{font-size:17px;font-weight:900;color:#fff}
+.profile-phone{font-size:12px;color:rgba(255,255,255,.75);margin-top:3px;font-weight:600}
+.menu-list{
+  background:var(--card);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow-card);
+}
+.menu-item{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;
+  cursor:pointer;border-bottom:1px solid var(--border);
+  transition:background .12s;
+}
+.menu-item:last-child{border-bottom:none}
+.menu-item:active{background:var(--bg)}
+.menu-icon-wrap{
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(26,95,180,.1);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.menu-label{flex:1;font-size:14px;font-weight:700}
+.menu-arrow{color:var(--muted);font-size:18px;font-weight:700}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);
+  border-top:1px solid var(--border);
+  display:flex;z-index:100;
+  padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -4px 20px rgba(26,95,180,.08);
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:3px;padding:10px 0;cursor:pointer;
+  color:var(--muted);font-size:10px;font-weight:700;
+  border:none;background:none;transition:color .15s;
+  position:relative;font-family:'Nunito',sans-serif;
+  letter-spacing:.2px;
+}
+.nav-item svg{width:22px;height:22px;transition:transform .15s}
+.nav-item.active{color:var(--blue)}
+.nav-item.active svg{transform:scale(1.12)}
+.nav-badge{
+  position:absolute;top:4px;right:calc(50% - 18px);
+  background:var(--red);color:#fff;font-size:9px;font-weight:800;
+  border-radius:50%;width:15px;height:15px;
+  display:none;align-items:center;justify-content:center;
+  border:2px solid var(--card);
+}
+
+/* ── DETAIL ── */
+.detail{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:var(--card);z-index:200;
+  overflow-y:auto;display:none;flex-direction:column;
+}
 .detail.open{display:flex}
-.detail-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1}
-.back-btn{background:none;border:none;cursor:pointer;color:var(--text);padding:4px}
-.back-btn svg{width:22px;height:22px}
-.detail-title{font-size:16px;font-weight:600}
+.detail-header{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--card);z-index:1;
+}
+.back-btn{
+  background:var(--bg);border:none;cursor:pointer;
+  color:var(--text);padding:8px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+}
+.back-btn svg{width:20px;height:20px}
+.detail-title{font-size:16px;font-weight:800}
+
 /* IMAGE SLIDER */
 .img-slider{position:relative;background:var(--bg);overflow:hidden}
-.img-slider-track{display:flex;transition:transform .3s ease;height:260px}
-.img-slide{flex-shrink:0;width:100%;height:260px;display:flex;align-items:center;justify-content:center;font-size:72px;cursor:zoom-in}
+.img-slider-track{display:flex;transition:transform .28s ease;height:270px}
+.img-slide{flex-shrink:0;width:100%;height:270px;display:flex;align-items:center;justify-content:center;font-size:80px;cursor:zoom-in}
 .img-slide img{width:100%;height:100%;object-fit:contain}
-.slider-dots{display:flex;justify-content:center;gap:6px;padding:8px 0;background:var(--bg)}
-.slider-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:.2s}
-.slider-dot.active{background:var(--blue);width:18px;border-radius:4px}
-.slider-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);color:#fff;border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;z-index:2}
-.slider-arrow.left{left:8px}
-.slider-arrow.right{right:8px}
-/* LIGHTBOX */
-.lightbox{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.95);z-index:1000;display:none;align-items:center;justify-content:center}
+.slider-dots{display:flex;justify-content:center;gap:6px;padding:10px 0;background:var(--bg)}
+.slider-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s}
+.slider-dot.active{background:var(--blue);width:20px;border-radius:4px}
+.slider-arrow{
+  position:absolute;top:50%;transform:translateY(-50%);
+  background:rgba(26,95,180,.55);color:#fff;
+  border:none;border-radius:50%;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;z-index:2;font-weight:700;
+}
+.slider-arrow.left{left:10px}
+.slider-arrow.right{right:10px}
+
+.detail-body{padding:18px 16px;flex:1}
+.detail-name{font-size:20px;font-weight:900;margin-bottom:3px;line-height:1.25}
+.detail-brand{font-size:12px;color:var(--muted);margin-bottom:14px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.detail-prices{margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.detail-price{font-size:24px;font-weight:900;color:var(--blue)}
+.detail-old{font-size:14px;color:var(--muted);text-decoration:line-through;font-weight:600}
+.disc-badge{
+  background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;
+  font-size:12px;font-weight:800;padding:3px 10px;border-radius:8px;
+}
+.detail-stock{font-size:13px;margin-bottom:14px;font-weight:700}
+.in-stock{color:#0d6e56}
+.no-stock{color:var(--red)}
+.detail-desc{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:16px;font-weight:600}
+.specs{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:18px}
+.spec-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)}
+.spec-row:last-child{border-bottom:none}
+.spec-label{color:var(--muted);font-weight:600}
+.spec-val{font-weight:800}
+.detail-add-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 14px rgba(26,95,180,.35);
+  font-family:'Nunito',sans-serif;transition:all .15s;
+}
+.detail-add-btn.added{background:linear-gradient(135deg,#0d6e56,#1a9b78)}
+.detail-add-btn:disabled{background:#c0ccdc;box-shadow:none;cursor:not-allowed}
+
+/* ── LIGHTBOX ── */
+.lightbox{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.96);z-index:1000;
+  display:none;align-items:center;justify-content:center;
+}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:4px}
-.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.detail-img{font-size:72px;height:260px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
-.detail-img img{width:100%;height:100%;object-fit:contain}
-.detail-body{padding:18px 16px;flex:1}
-.detail-name{font-size:19px;font-weight:700;margin-bottom:4px}
-.detail-brand{font-size:13px;color:var(--muted);margin-bottom:12px}
-.detail-prices{margin-bottom:14px}
-.detail-price{font-size:22px;font-weight:700;color:var(--blue)}
-.detail-old{font-size:14px;color:var(--muted);text-decoration:line-through;margin-top:2px}
-.disc-badge{display:inline-block;background:#fde8e8;color:var(--red);font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px}
-.detail-desc{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:16px}
-.specs{background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px}
-.spec-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)}
-.spec-row:last-child{border-bottom:none}
-.spec-label{color:var(--muted)}
-.spec-val{font-weight:600}
-.detail-stock{font-size:13px;margin-bottom:16px}
-.in-stock{color:var(--teal);font-weight:600}
-.no-stock{color:var(--red);font-weight:600}
-.detail-add-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
-.detail-add-btn.added{background:var(--teal)}
-.detail-add-btn:disabled{background:var(--muted);cursor:not-allowed}
+.lightbox-close{
+  position:absolute;top:16px;right:16px;
+  background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;
+  width:38px;height:38px;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Nunito',sans-serif;
+}
 
-/* PROFILE */
-.profile-page{padding:14px 16px}
-.profile-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px}
-.avatar{width:52px;height:52px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--blue);flex-shrink:0}
-.profile-name{font-size:16px;font-weight:700}
-.profile-phone{font-size:13px;color:var(--muted);margin-top:2px}
-.menu-list{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
-.menu-item{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border)}
-.menu-item:last-child{border-bottom:none}
-.menu-icon{font-size:18px;width:22px;text-align:center}
-.menu-label{flex:1;font-size:14px}
-.menu-arrow{color:var(--muted);font-size:16px}
+/* ── SUCCESS ── */
+.success{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:var(--card);z-index:300;
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;padding:32px;text-align:center;
+}
+.success.open{display:flex}
+.success-icon{
+  width:80px;height:80px;border-radius:50%;
+  background:linear-gradient(135deg,#0d6e56,#1a9b78);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px;font-size:38px;
+  box-shadow:0 6px 20px rgba(13,110,86,.3);
+}
+.success h2{font-size:22px;font-weight:900;margin-bottom:8px}
+.success p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px;font-weight:600}
+.order-num{
+  font-size:14px;background:var(--bg);border-radius:12px;
+  padding:12px 24px;margin-bottom:24px;font-weight:800;
+  color:var(--blue);
+}
+.continue-btn{
+  padding:13px 36px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  color:#fff;border:none;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;
+  font-family:'Nunito',sans-serif;
+  box-shadow:0 4px 14px rgba(26,95,180,.35);
+}
 
 /* LOADING / ERROR */
-.loading{text-align:center;padding:40px;color:var(--muted);font-size:14px}
-.spin{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px}
+.loading{text-align:center;padding:48px;color:var(--muted);font-size:14px;font-weight:700}
+.spin{
+  display:inline-block;width:28px;height:28px;
+  border:3px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px;
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-.error-box{background:#fde8e8;border:1px solid var(--red);border-radius:var(--radius-sm);padding:14px;margin:16px;font-size:13px;color:var(--red);text-align:center}
-
-/* SUCCESS */
-.success{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--card);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
-.success.open{display:flex}
-.success-icon{width:72px;height:72px;border-radius:50%;background:var(--teal-light);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:36px}
-.success h2{font-size:22px;font-weight:700;margin-bottom:8px}
-.success p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
-.order-num{font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 20px;margin-bottom:24px;font-weight:600}
-.continue-btn{padding:12px 32px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer}
+.error-box{
+  background:#fde8ea;border:2px solid var(--red);border-radius:12px;
+  padding:16px;margin:16px;font-size:13px;color:var(--red);
+  text-align:center;font-weight:700;
+}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
-<div class="header">
+<div class="header" id="mainHeader">
   <div class="header-top">
-    <div class="logo">
-      🔧 Sarichashma Santexnika
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <!-- Sarichashma SVG logo (simplified) -->
+        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40 8 L72 32 L72 72 L8 72 L8 32 Z" fill="none" stroke="#1a5fb4" stroke-width="6" stroke-linejoin="round"/>
+          <path d="M8 32 L40 8 L72 32" fill="none" stroke="#e63946" stroke-width="6" stroke-linejoin="round"/>
+          <text x="40" y="58" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="28" fill="#1a5fb4">S</text>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <div class="logo-name">SARICHASHMA</div>
+        <div class="logo-sub">Santexnika</div>
+      </div>
     </div>
-    <button class="cart-btn" onclick="switchTab('cart')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    <button class="cart-fab" onclick="switchTab('cart')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
       <span class="badge" id="hBadge"></span>
     </button>
   </div>
-  <div class="search" id="searchBox">
+  <div class="search-wrap" id="searchBox">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" placeholder="Mahsulot qidirish..." oninput="filterProds(this.value)" id="searchInput" />
+    <input type="text" placeholder="Mahsulot qidirish..." oninput="filterProds(this.value)" id="searchInput"/>
   </div>
 </div>
 
 <!-- CATEGORIES -->
-<div class="cats" id="catList"></div>
+<div class="cats-wrap" id="catsWrap">
+  <div class="cats" id="catList"></div>
+</div>
 
 <!-- PAGES -->
 <div id="page-catalog" class="page active">
   <div class="section">
-    <div class="section-label" id="catLabel">Barcha mahsulotlar</div>
+    <div class="section-head">
+      <span class="section-label" id="catLabel">Barcha mahsulotlar</span>
+      <span class="section-count" id="prodCount"></span>
+    </div>
     <div class="grid" id="productsGrid">
       <div class="loading" style="grid-column:span 2">
         <div class="spin"></div><br>Yuklanmoqda...
@@ -237,12 +544,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="order-section">
       <div class="order-section-title">👤 Kontakt ma'lumotlar</div>
       <div class="form-group">
-        <label class="form-label">Ism familiya *</label>
-        <input type="text" class="form-input" id="oName" placeholder="Alisher Karimov" />
+        <label class="form-label">Ism familiya</label>
+        <input type="text" class="form-input" id="oName" placeholder="Alisher Karimov"/>
       </div>
       <div class="form-group">
-        <label class="form-label">Telefon raqam *</label>
-        <input type="tel" class="form-input" id="oPhone" placeholder="+998 90 123 45 67" />
+        <label class="form-label">Telefon raqam</label>
+        <input type="tel" class="form-input" id="oPhone" placeholder="+998 90 123 45 67"/>
       </div>
     </div>
     <div class="order-section">
@@ -258,8 +565,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
       <div class="form-group" style="margin-top:12px" id="addrGroup">
-        <label class="form-label">Manzil *</label>
-        <input type="text" class="form-input" id="oAddr" placeholder="Ko'cha, uy raqami..." />
+        <label class="form-label">Manzil</label>
+        <input type="text" class="form-input" id="oAddr" placeholder="Ko'cha, uy raqami..."/>
       </div>
     </div>
     <div class="order-section">
@@ -280,54 +587,58 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="order-section-title">📝 Izoh</div>
       <textarea class="form-input form-textarea" id="oNote" placeholder="Qo'shimcha izoh (ixtiyoriy)..."></textarea>
     </div>
-    <button class="submit-btn" id="submitBtn" onclick="submitOrder()">
-      ✅ Buyurtma berish
-    </button>
+    <button class="submit-btn" id="submitBtn" onclick="submitOrder()">✅ Buyurtma berish</button>
   </div>
 </div>
 
-<!-- PROMOTIONS PAGE -->
 <div id="page-promos" class="page">
   <div class="promo-page" id="promoContent">
-    <div class="loading">
-      <div class="spin"></div><br>Yuklanmoqda...
-    </div>
+    <div class="loading"><div class="spin"></div><br>Yuklanmoqda...</div>
   </div>
 </div>
 
-<!-- PROFILE PAGE -->
 <div id="page-profile" class="page">
   <div class="profile-page">
-    <div class="profile-card" id="profileCard">
-      <div class="avatar" id="avatarEl">?</div>
+    <div class="profile-hero">
+      <div class="avatar" id="avatarEl">👤</div>
       <div>
-        <div class="profile-name" id="profileName">Foydalanuvchi</div>
+        <div class="profile-name" id="profileName">Mehmon</div>
         <div class="profile-phone" id="profilePhone">Telegram orqali</div>
       </div>
     </div>
     <div class="menu-list">
       <div class="menu-item" onclick="switchTab('catalog')">
-        <span class="menu-icon">🛍</span><span class="menu-label">Katalog</span><span class="menu-arrow">›</span>
+        <div class="menu-icon-wrap">🛍</div>
+        <span class="menu-label">Katalog</span>
+        <span class="menu-arrow">›</span>
       </div>
       <div class="menu-item" onclick="switchTab('cart')">
-        <span class="menu-icon">🛒</span><span class="menu-label">Savat</span><span class="menu-arrow">›</span>
-      </div>
-      <div class="menu-item" onclick="switchTab('order')">
-        <span class="menu-icon">📦</span><span class="menu-label">Buyurtma berish</span><span class="menu-arrow">›</span>
+        <div class="menu-icon-wrap">🛒</div>
+        <span class="menu-label">Savat</span>
+        <span class="menu-arrow">›</span>
       </div>
       <div class="menu-item" onclick="switchTab('promos')">
-        <span class="menu-icon">🎉</span><span class="menu-label">Aksiyalar</span><span class="menu-arrow">›</span>
+        <div class="menu-icon-wrap">🎉</div>
+        <span class="menu-label">Aksiyalar</span>
+        <span class="menu-arrow">›</span>
       </div>
     </div>
     <div class="menu-list">
       <div class="menu-item">
-        <span class="menu-icon">📞</span><span class="menu-label">+998 88 894 59 00</span>
+        <div class="menu-icon-wrap">📞</div>
+        <span class="menu-label">+998 88 894 59 00</span>
       </div>
       <div class="menu-item">
-        <span class="menu-icon">📍</span><span class="menu-label">Samarqand, Jomboy tuman</span>
+        <div class="menu-icon-wrap">📞</div>
+        <span class="menu-label">+998 94 282 62 66</span>
       </div>
       <div class="menu-item">
-        <span class="menu-icon">⏰</span><span class="menu-label">07:00 – 20:00</span>
+        <div class="menu-icon-wrap">📍</div>
+        <span class="menu-label">Samarqand, Jomboy tuman</span>
+      </div>
+      <div class="menu-item">
+        <div class="menu-icon-wrap">⏰</div>
+        <span class="menu-label">07:00 – 20:00</span>
       </div>
     </div>
   </div>
@@ -336,7 +647,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="switchTab('catalog')" id="nav-catalog">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     Katalog
   </button>
   <button class="nav-item" onclick="switchTab('cart')" id="nav-cart">
@@ -368,7 +679,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="detail" id="detailEl">
   <div class="detail-header">
     <button class="back-btn" onclick="closeDetail()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <span class="detail-title">Mahsulot</span>
   </div>
@@ -404,166 +715,135 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-// ============================================================
-// TELEGRAM SETUP
-// ============================================================
 const tg = window.Telegram && window.Telegram.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-  // Telegram tema ranglarini ishlatish
-  if (tg.colorScheme === 'dark') {
-    document.documentElement.style.setProperty('--bg', '#1a1a2e');
-  }
-}
+if(tg){tg.ready();tg.expand();}
 
-// ============================================================
-// API URL — Railway URL yoki ENV dan
-// ============================================================
 const API_BASE = 'https://sarichashma-santexnika-production.up.railway.app';
 
-// ============================================================
-// STATE
-// ============================================================
-let PRODUCTS = [];
-let CATS = [];
-let PROMOS = [];
-let cart = {};
-let currentCat = 0;
-let searchQ = '';
-let currentDetailId = null;
-let deliveryType = 'Kuryer';
-let payType = 'Naqd';
-let promosLoaded = false;
+let PRODUCTS=[], CATS=[], PROMOS=[];
+let cart={}, currentCat=0, searchQ='';
+let currentDetailId=null, deliveryType='Kuryer', payType='Naqd';
+let promosLoaded=false, sliderImages=[], sliderIdx=0;
 
-// ============================================================
-// INIT
-// ============================================================
-async function init() {
+async function init(){
   loadProfile();
   await loadProducts();
 }
 
-async function loadProducts() {
-  const grid = document.getElementById('productsGrid');
-  try {
-    const res = await fetch(API_BASE + '/api/products');
-    if (!res.ok) throw new Error('Server xatosi: ' + res.status);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    CATS = data.categories || [];
-    PRODUCTS = data.products || [];
-
+async function loadProducts(){
+  const grid=document.getElementById('productsGrid');
+  try{
+    const res=await fetch(API_BASE+'/api/products');
+    if(!res.ok) throw new Error('Server xatosi: '+res.status);
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    CATS=data.categories||[];
+    PRODUCTS=data.products||[];
     buildCats();
     renderProds();
-  } catch (e) {
-    console.error('API xatosi:', e);
-    grid.innerHTML = `<div class="error-box" style="grid-column:span 2">
-      ❌ Mahsulotlarni yuklashda xatolik.<br>
-      <small>${e.message}</small><br><br>
-      <button onclick="loadProducts()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px">
-        🔄 Qayta urinish
-      </button>
+  }catch(e){
+    grid.innerHTML=`<div class="error-box" style="grid-column:span 2">
+      ❌ Mahsulotlarni yuklashda xatolik.<br><small>${e.message}</small><br><br>
+      <button onclick="loadProducts()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:700;font-family:Nunito,sans-serif">🔄 Qayta</button>
     </div>`;
   }
 }
 
-async function loadPromos() {
-  if (promosLoaded) return;
-  const cont = document.getElementById('promoContent');
-  try {
-    const res = await fetch(API_BASE + '/api/promotions');
-    if (!res.ok) throw new Error('Server xatosi: ' + res.status);
-    const data = await res.json();
-    PROMOS = data.promotions || [];
-    promosLoaded = true;
+async function loadPromos(){
+  if(promosLoaded) return;
+  const cont=document.getElementById('promoContent');
+  try{
+    const res=await fetch(API_BASE+'/api/promotions');
+    if(!res.ok) throw new Error('Server xatosi: '+res.status);
+    const data=await res.json();
+    PROMOS=data.promotions||[];
+    promosLoaded=true;
     renderPromos();
-  } catch (e) {
-    cont.innerHTML = `<div class="error-box">
-      ❌ Aksiyalarni yuklashda xatolik.<br>
-      <button onclick="promosLoaded=false;loadPromos()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px">
-        🔄 Qayta
-      </button>
-    </div>`;
+  }catch(e){
+    // aksiyalar API endpoint yo'q bo'lishi mumkin — bo'sh ko'rsat
+    PROMOS=[];
+    promosLoaded=true;
+    renderPromos();
   }
 }
 
-function loadProfile() {
-  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-    const u = tg.initDataUnsafe.user;
-    const initials = ((u.first_name||'')[0]||'') + ((u.last_name||'')[0]||'');
-    document.getElementById('avatarEl').textContent = initials || '👤';
-    document.getElementById('profileName').textContent = [u.first_name, u.last_name].filter(Boolean).join(' ');
-    document.getElementById('profilePhone').textContent = u.username ? '@' + u.username : 'Telegram foydalanuvchi';
-    document.getElementById('oName').value = [u.first_name, u.last_name].filter(Boolean).join(' ');
+function loadProfile(){
+  if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user){
+    const u=tg.initDataUnsafe.user;
+    const ini=((u.first_name||'')[0]||'')+((u.last_name||'')[0]||'');
+    document.getElementById('avatarEl').textContent=ini||'👤';
+    document.getElementById('profileName').textContent=[u.first_name,u.last_name].filter(Boolean).join(' ');
+    document.getElementById('profilePhone').textContent=u.username?'@'+u.username:'Telegram foydalanuvchi';
+    document.getElementById('oName').value=[u.first_name,u.last_name].filter(Boolean).join(' ');
   }
 }
 
-// ============================================================
-// CATEGORIES
-// ============================================================
-function buildCats() {
-  const el = document.getElementById('catList');
-  el.innerHTML = '';
-  const all = document.createElement('div');
-  all.className = 'cat-pill active';
-  all.textContent = '🏠 Barchasi';
-  all.onclick = () => selectCat(0, 'Barcha mahsulotlar', all);
+function buildCats(){
+  const el=document.getElementById('catList');
+  el.innerHTML='';
+  const all=document.createElement('div');
+  all.className='cat-pill active';
+  all.innerHTML='🏠 Barchasi';
+  all.onclick=()=>selectCat(0,'Barcha mahsulotlar',all);
   el.appendChild(all);
-  CATS.forEach(c => {
-    const d = document.createElement('div');
-    d.className = 'cat-pill';
-    d.textContent = `${c.emoji} ${c.name}`;
-    d.onclick = () => selectCat(c.id, c.name, d);
+  CATS.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='cat-pill';
+    d.textContent=`${c.emoji} ${c.name}`;
+    d.onclick=()=>selectCat(c.id,c.name,d);
     el.appendChild(d);
   });
 }
 
-function selectCat(id, label, el) {
-  currentCat = id;
-  document.querySelectorAll('.cat-pill').forEach(x => x.classList.remove('active'));
+function selectCat(id,label,el){
+  currentCat=id;
+  document.querySelectorAll('.cat-pill').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('catLabel').textContent = label;
+  document.getElementById('catLabel').textContent=label;
   renderProds();
 }
 
-// ============================================================
-// PRODUCTS
-// ============================================================
-function filterProds(q) { searchQ = q; renderProds(); }
+function filterProds(q){searchQ=q;renderProds();}
 
-function renderProds() {
-  const grid = document.getElementById('productsGrid');
-  const filtered = PRODUCTS.filter(p =>
-    (currentCat === 0 || p.category_id === currentCat) &&
-    (!searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()) ||
-     (p.description || '').toLowerCase().includes(searchQ.toLowerCase()))
+function firstImg(url){
+  if(!url) return null;
+  const u=url.split(',')[0].trim();
+  return u.startsWith('http')?u:null;
+}
+
+function renderProds(){
+  const grid=document.getElementById('productsGrid');
+  const filtered=PRODUCTS.filter(p=>
+    (currentCat===0||p.category_id===currentCat)&&
+    (!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||
+     (p.description||'').toLowerCase().includes(searchQ.toLowerCase()))
   );
-  if (!filtered.length) {
-    grid.innerHTML = `<div class="no-products">
-      ${searchQ ? '🔍 Qidiruv natijasi topilmadi' : '📦 Bu kategoriyada mahsulot yo\'q'}
-    </div>`;
+  document.getElementById('prodCount').textContent=filtered.length?filtered.length+' ta':'';
+  if(!filtered.length){
+    grid.innerHTML=`<div class="no-products">${searchQ?'🔍 Topilmadi':'📦 Mahsulot yo\'q'}</div>`;
     return;
   }
-  grid.innerHTML = filtered.map(p => {
-    const inC = !!cart[p.id];
-    const isUrl = p.image_url && p.image_url.startsWith('http');
+  grid.innerHTML=filtered.map(p=>{
+    const inC=!!cart[p.id];
+    const img=firstImg(p.image_url);
+    const disc=p.old_price?Math.round((1-p.price/p.old_price)*100):0;
     return `<div class="product-card" onclick="openDetail(${p.id})">
-      <div class="product-img">${isUrl
-        ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">` 
-        : (p.cat_emoji || '📦')}</div>
+      <div class="product-img">
+        ${img?`<img src="${img}" alt="${p.name}" onerror="this.parentElement.innerHTML='${p.cat_emoji||'📦'}'">`:p.cat_emoji||'📦'}
+        ${disc>0?`<div class="disc-tag">-${disc}%</div>`:''}
+        ${p.stock===0?`<div class="no-stock-badge">Tugagan</div>`:''}
+      </div>
       <div class="product-info">
         <div class="product-name">${p.name}</div>
-        <div class="product-brand">${p.cat_name || ''}</div>
+        <div class="product-cat">${p.cat_emoji||''} ${p.cat_name||''}</div>
         <div class="product-footer">
-          <div>
+          <div class="price-col">
             <div class="product-price">${p.price.toLocaleString()} so'm</div>
-            ${p.old_price ? `<div class="old-price">${p.old_price.toLocaleString()}</div>` : ''}
+            ${p.old_price?`<div class="old-price">${p.old_price.toLocaleString()}</div>`:''}
           </div>
           <button class="add-btn ${inC?'in-cart':''}"
-            onclick="event.stopPropagation();toggleCart(${p.id},this)"
-            ${p.stock===0?'disabled title="Mavjud emas"':''}>
+            onclick="event.stopPropagation();toggleCart(${p.id})"
+            ${p.stock===0?'disabled':''}>
             ${inC?'✓':'+'}
           </button>
         </div>
@@ -572,47 +852,36 @@ function renderProds() {
   }).join('');
 }
 
-// ============================================================
-// CART
-// ============================================================
-function toggleCart(id, btn) {
-  if (cart[id]) { delete cart[id]; } else { cart[id] = {qty:1}; }
-  renderProds(); updateBadge();
-  if (currentDetailId === id) updateDetailBtn(id);
+function toggleCart(id){
+  if(cart[id]){delete cart[id];}else{cart[id]={qty:1};}
+  renderProds();updateBadge();
+  if(currentDetailId===id)updateDetailBtn(id);
 }
 
-function updateBadge() {
-  const n = Object.keys(cart).length;
-  const hb = document.getElementById('hBadge');
-  const nb = document.getElementById('cNavBadge');
-  if (n > 0) {
-    hb.textContent = nb.textContent = n;
-    hb.style.display = nb.style.display = 'flex';
-  } else {
-    hb.style.display = nb.style.display = 'none';
-  }
+function updateBadge(){
+  const n=Object.keys(cart).length;
+  const hb=document.getElementById('hBadge');
+  const nb=document.getElementById('cNavBadge');
+  if(n>0){hb.textContent=nb.textContent=n;hb.style.display=nb.style.display='flex';}
+  else{hb.style.display=nb.style.display='none';}
 }
 
-function renderCart() {
-  const cont = document.getElementById('cartContent');
-  const keys = Object.keys(cart);
-  if (!keys.length) {
-    cont.innerHTML = `<div class="empty"><div class="empty-icon">🛒</div><p>Savat bo'sh.<br>Katalogdan mahsulot tanlang.</p></div>`;
+function renderCart(){
+  const cont=document.getElementById('cartContent');
+  const keys=Object.keys(cart);
+  if(!keys.length){
+    cont.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>Savat bo'sh.<br>Katalogdan mahsulot tanlang.</p></div>`;
     return;
   }
-  let total = 0;
-  let html = '';
-  keys.forEach(id => {
-    const p = PRODUCTS.find(x => x.id == id);
-    if (!p) return;
-    const qty = cart[id].qty;
-    const sub = p.price * qty;
-    total += sub;
-    const isUrl = p.image_url && p.image_url.startsWith('http');
-    html += `<div class="cart-item">
-      <div class="cart-item-emoji">${isUrl
-        ? `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">`
-        : (p.cat_emoji || '📦')}</div>
+  let total=0,html='';
+  keys.forEach(id=>{
+    const p=PRODUCTS.find(x=>x.id==id);
+    if(!p) return;
+    const qty=cart[id].qty,sub=p.price*qty;
+    total+=sub;
+    const img=firstImg(p.image_url);
+    html+=`<div class="cart-item">
+      <div class="cart-item-img">${img?`<img src="${img}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">`:(p.cat_emoji||'📦')}</div>
       <div class="cart-item-info">
         <div class="cart-item-name">${p.name}</div>
         <div class="cart-item-sub">${p.price.toLocaleString()} so'm / dona</div>
@@ -623,273 +892,184 @@ function renderCart() {
         </div>
       </div>
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--blue);text-align:right">${sub.toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--muted);text-align:right">so'm</div>
-        <button class="del-btn" onclick="removeItem(${id})" style="margin-top:6px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <div style="font-size:13px;font-weight:800;color:var(--blue);text-align:right">${sub.toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--muted);text-align:right;font-weight:600">so'm</div>
+        <button class="del-btn" onclick="removeItem(${id})" style="margin-top:8px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         </button>
       </div>
     </div>`;
   });
-  const delivery = deliveryType === 'Kuryer' ? 15000 : 0;
-  html += `<div class="cart-summary">
+  const delivery=deliveryType==='Kuryer'?15000:0;
+  html+=`<div class="cart-summary">
     <div class="sum-row"><span>Mahsulotlar (${keys.length} tur)</span><span>${total.toLocaleString()} so'm</span></div>
-    <div class="sum-row"><span>Yetkazib berish</span><span>${delivery ? delivery.toLocaleString()+' so\'m' : 'Bepul'}</span></div>
+    <div class="sum-row"><span>Yetkazib berish</span><span>${delivery?delivery.toLocaleString()+' so\'m':'Bepul'}</span></div>
     <div class="sum-row total"><span>Jami</span><span>${(total+delivery).toLocaleString()} so'm</span></div>
     <button class="checkout-btn" onclick="switchTab('order')">✅ Buyurtma rasmiylashtirish</button>
   </div>`;
-  cont.innerHTML = html;
+  cont.innerHTML=html;
 }
 
-function changeQty(id, d) {
-  cart[id].qty = Math.max(1, cart[id].qty + d);
-  renderCart(); updateBadge();
-}
+function changeQty(id,d){cart[id].qty=Math.max(1,cart[id].qty+d);renderCart();updateBadge();}
+function removeItem(id){delete cart[id];renderCart();updateBadge();renderProds();}
 
-function removeItem(id) {
-  delete cart[id]; renderCart(); updateBadge(); renderProds();
-}
-
-// ============================================================
-// PROMOTIONS
-// ============================================================
-function renderPromos() {
-  const cont = document.getElementById('promoContent');
-  if (!PROMOS.length) {
-    cont.innerHTML = `<div class="promo-empty">
-      <div style="font-size:48px;margin-bottom:12px">🎉</div>
-      <p style="font-size:15px;font-weight:600;margin-bottom:8px">Hozircha aksiyalar yo'q</p>
-      <p style="font-size:13px;color:var(--muted)">Tez orada yangi aksiyalar bo'ladi!</p>
+function renderPromos(){
+  const cont=document.getElementById('promoContent');
+  if(!PROMOS.length){
+    cont.innerHTML=`<div class="promo-empty">
+      <div style="font-size:56px;margin-bottom:14px">🎉</div>
+      <p style="font-size:16px;font-weight:800;margin-bottom:8px">Hozircha aksiyalar yo'q</p>
+      <p style="font-size:13px;color:var(--muted);font-weight:600">Tez orada yangi aksiyalar bo'ladi!</p>
     </div>`;
     return;
   }
-  const colors = [
-    'linear-gradient(135deg,#1d5fa8,#2e86de)',
-    'linear-gradient(135deg,#0d6e56,#1a9b78)',
-    'linear-gradient(135deg,#7b2d8b,#b44fcc)',
-    'linear-gradient(135deg,#c0392b,#e74c3c)',
-  ];
-  cont.innerHTML = PROMOS.map((p, i) => `
+  const colors=['linear-gradient(135deg,#1a5fb4,#2e86de)','linear-gradient(135deg,#0d6e56,#1a9b78)','linear-gradient(135deg,#e63946,#ff6b6b)','linear-gradient(135deg,#7b2d8b,#b44fcc)'];
+  cont.innerHTML=PROMOS.map((p,i)=>`
     <div class="promo-card">
-      <div class="promo-banner" style="background:${colors[i % colors.length]}">
-        ${p.discount_percent ? `<div class="promo-discount">-${p.discount_percent}%</div>` : ''}
+      <div class="promo-banner" style="background:${colors[i%colors.length]}">
+        ${p.discount_percent?`<div class="promo-discount" style="color:${['#1a5fb4','#0d6e56','#e63946','#7b2d8b'][i%4]}">-${p.discount_percent}%</div>`:''}
         <div class="promo-title">${p.title}</div>
-        ${p.description ? `<div class="promo-desc">${p.description}</div>` : ''}
+        ${p.description?`<div class="promo-desc">${p.description}</div>`:''}
       </div>
       <div class="promo-footer">
-        <div class="promo-expires">${p.expires_at ? '📅 ' + p.expires_at + ' gacha' : '⏳ Muddatsiz'}</div>
+        <div class="promo-expires">${p.expires_at?'📅 '+p.expires_at+' gacha':'⏳ Muddatsiz'}</div>
         <button class="promo-shop-btn" onclick="switchTab('catalog')">Xarid qilish →</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-// ============================================================
-// PRODUCT DETAIL + SLIDER + LIGHTBOX
-// ============================================================
-let sliderImages = [];
-let sliderIdx = 0;
-
-function openDetail(id) {
-  const p = PRODUCTS.find(x => x.id === id);
-  if (!p) return;
-  currentDetailId = id;
-
-  // Rasmlar — vergul bilan ajratilgan bo'lishi mumkin
-  sliderImages = (p.image_url || '')
-    .split(',')
-    .map(u => u.trim())
-    .filter(u => u.startsWith('http'));
-  sliderIdx = 0;
-
+// ── DETAIL + SLIDER ──
+function openDetail(id){
+  const p=PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  currentDetailId=id;
+  sliderImages=(p.image_url||'').split(',').map(u=>u.trim()).filter(u=>u.startsWith('http'));
+  sliderIdx=0;
   buildSlider(p);
-
-  document.getElementById('dName').textContent = p.name;
-  document.getElementById('dBrand').textContent = p.cat_name || '';
-  document.getElementById('dCat').textContent = `${p.cat_emoji||''} ${p.cat_name||'-'}`;
-  document.getElementById('dStockNum').textContent = p.stock > 0 ? `${p.stock} dona` : 'Mavjud emas';
-  document.getElementById('dSpecs').style.display = 'block';
-
-  const disc = p.old_price ? Math.round((1-p.price/p.old_price)*100) : 0;
-  document.getElementById('dPrices').innerHTML = `
+  document.getElementById('dName').textContent=p.name;
+  document.getElementById('dBrand').textContent=p.cat_name||'';
+  document.getElementById('dCat').textContent=`${p.cat_emoji||''} ${p.cat_name||'-'}`;
+  document.getElementById('dStockNum').textContent=p.stock>0?`${p.stock} dona`:'Mavjud emas';
+  document.getElementById('dSpecs').style.display='block';
+  const disc=p.old_price?Math.round((1-p.price/p.old_price)*100):0;
+  document.getElementById('dPrices').innerHTML=`
     <span class="detail-price">${p.price.toLocaleString()} so'm</span>
-    ${p.old_price ? `<span class="disc-badge">-${disc}%</span><div class="detail-old">${p.old_price.toLocaleString()} so'm</div>` : ''}`;
-
-  document.getElementById('dStock').innerHTML = p.stock > 0
-    ? `<span class="in-stock">✅ Mavjud: ${p.stock} dona</span>`
-    : `<span class="no-stock">❌ Mavjud emas</span>`;
-
-  document.getElementById('dDesc').textContent = p.description || 'Tavsif mavjud emas';
+    ${p.old_price?`<span class="disc-badge">-${disc}%</span><span class="detail-old">${p.old_price.toLocaleString()} so'm</span>`:''}`;
+  document.getElementById('dStock').innerHTML=p.stock>0
+    ?`<span class="in-stock">✅ Mavjud: ${p.stock} dona</span>`
+    :`<span class="no-stock">❌ Mavjud emas</span>`;
+  document.getElementById('dDesc').textContent=p.description||'Tavsif mavjud emas';
   updateDetailBtn(id);
   document.getElementById('detailEl').classList.add('open');
 }
 
-function buildSlider(p) {
-  const track = document.getElementById('dImgTrack');
-  const dots = document.getElementById('sliderDots');
-  const btnL = document.getElementById('sliderLeft');
-  const btnR = document.getElementById('sliderRight');
-
-  if (!sliderImages.length) {
-    // Rasm yo'q — emoji ko'rsat
-    track.innerHTML = `<div class="img-slide" style="font-size:72px">${p.cat_emoji||'📦'}</div>`;
-    dots.innerHTML = '';
-    btnL.style.display = btnR.style.display = 'none';
-    return;
+function buildSlider(p){
+  const track=document.getElementById('dImgTrack');
+  const dots=document.getElementById('sliderDots');
+  const btnL=document.getElementById('sliderLeft');
+  const btnR=document.getElementById('sliderRight');
+  if(!sliderImages.length){
+    track.innerHTML=`<div class="img-slide" style="font-size:90px">${p.cat_emoji||'📦'}</div>`;
+    dots.innerHTML='';btnL.style.display=btnR.style.display='none';return;
   }
-
-  track.innerHTML = sliderImages.map((url, i) =>
+  track.innerHTML=sliderImages.map((url,i)=>
     `<div class="img-slide" onclick="openLightbox('${url}')">
-      <img src="${url}" alt="rasm ${i+1}" onerror="this.parentElement.innerHTML='${p.cat_emoji||'📦'}'">
-    </div>`
-  ).join('');
-
-  // Dots
-  dots.innerHTML = sliderImages.length > 1
-    ? sliderImages.map((_, i) => `<div class="slider-dot ${i===0?'active':''}" onclick="goSlide(${i})"></div>`).join('')
-    : '';
-
-  // Arrows
-  const multi = sliderImages.length > 1;
-  btnL.style.display = btnR.style.display = multi ? 'flex' : 'none';
-
+      <img src="${url}" alt="${i+1}" onerror="this.parentElement.innerHTML='${p.cat_emoji||'📦'}'">
+    </div>`).join('');
+  dots.innerHTML=sliderImages.length>1
+    ?sliderImages.map((_,i)=>`<div class="slider-dot ${i===0?'active':''}" onclick="goSlide(${i})"></div>`).join(''):'';
+  const multi=sliderImages.length>1;
+  btnL.style.display=btnR.style.display=multi?'flex':'none';
   updateSlider();
 }
 
-function updateSlider() {
-  document.getElementById('dImgTrack').style.transform = `translateX(-${sliderIdx * 100}%)`;
-  document.querySelectorAll('.slider-dot').forEach((d, i) => {
-    d.classList.toggle('active', i === sliderIdx);
-  });
+function updateSlider(){
+  document.getElementById('dImgTrack').style.transform=`translateX(-${sliderIdx*100}%)`;
+  document.querySelectorAll('.slider-dot').forEach((d,i)=>d.classList.toggle('active',i===sliderIdx));
 }
+function slideImg(dir){sliderIdx=(sliderIdx+dir+sliderImages.length)%sliderImages.length;updateSlider();}
+function goSlide(i){sliderIdx=i;updateSlider();}
+function openLightbox(url){document.getElementById('lightboxImg').src=url;document.getElementById('lightboxEl').classList.add('open');}
+function closeLightbox(){document.getElementById('lightboxEl').classList.remove('open');}
 
-function slideImg(dir) {
-  sliderIdx = (sliderIdx + dir + sliderImages.length) % sliderImages.length;
-  updateSlider();
+function updateDetailBtn(id){
+  const p=PRODUCTS.find(x=>x.id===id);
+  const btn=document.getElementById('dAddBtn');
+  const inC=!!cart[id];
+  btn.className='detail-add-btn'+(inC?' added':'');
+  btn.textContent=inC?'✅ Savatda bor — Olib tashlash':'🛒 Savatga qo\'shish';
+  btn.disabled=p.stock===0&&!inC;
 }
-
-function goSlide(i) {
-  sliderIdx = i;
-  updateSlider();
+function addFromDetail(){
+  if(cart[currentDetailId]){delete cart[currentDetailId];}else{cart[currentDetailId]={qty:1};}
+  updateDetailBtn(currentDetailId);updateBadge();renderProds();
 }
+function closeDetail(){document.getElementById('detailEl').classList.remove('open');}
 
-function openLightbox(url) {
-  document.getElementById('lightboxImg').src = url;
-  document.getElementById('lightboxEl').classList.add('open');
-}
-
-function closeLightbox() {
-  document.getElementById('lightboxEl').classList.remove('open');
-}
-
-function updateDetailBtn(id) {
-  const p = PRODUCTS.find(x => x.id === id);
-  const btn = document.getElementById('dAddBtn');
-  const inC = !!cart[id];
-  btn.className = 'detail-add-btn' + (inC ? ' added' : '');
-  btn.textContent = inC ? '✅ Savatda bor — Olib tashlash' : '🛒 Savatga qo\'shish';
-  btn.disabled = p.stock === 0 && !inC;
-}
-
-function addFromDetail() {
-  if (cart[currentDetailId]) { delete cart[currentDetailId]; }
-  else { cart[currentDetailId] = {qty:1}; }
-  updateDetailBtn(currentDetailId);
-  updateBadge(); renderProds();
-}
-
-function closeDetail() { document.getElementById('detailEl').classList.remove('open'); }
-
-// ============================================================
-// TABS
-// ============================================================
-function switchTab(tab) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+// ── TABS ──
+function switchTab(tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+tab).classList.add('active');
-  const navEl = document.getElementById('nav-'+tab);
-  if (navEl) navEl.classList.add('active');
-
-  // Search faqat katalogda ko'rinsin
-  document.getElementById('searchBox').style.display = tab === 'catalog' ? 'flex' : 'none';
-  document.getElementById('catList').style.display = tab === 'catalog' ? 'flex' : 'none';
-
-  if (tab === 'cart') renderCart();
-  if (tab === 'promos') loadPromos();
+  const navEl=document.getElementById('nav-'+tab);
+  if(navEl) navEl.classList.add('active');
+  const isC=tab==='catalog';
+  document.getElementById('searchBox').style.display=isC?'flex':'none';
+  document.getElementById('catsWrap').style.display=isC?'block':'none';
+  if(tab==='cart') renderCart();
+  if(tab==='promos') loadPromos();
 }
 
-// ============================================================
-// ORDER
-// ============================================================
-function selDelivery(el, type) {
-  document.querySelectorAll('.d-opt').forEach(x => x.classList.remove('sel'));
-  el.classList.add('sel');
-  deliveryType = type;
-  document.getElementById('addrGroup').style.display = type === 'Kuryer' ? 'block' : 'none';
-  if (Object.keys(cart).length) renderCart();
+// ── ORDER ──
+function selDelivery(el,type){
+  document.querySelectorAll('.d-opt').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');deliveryType=type;
+  document.getElementById('addrGroup').style.display=type==='Kuryer'?'block':'none';
+  if(Object.keys(cart).length) renderCart();
+}
+function selPay(el,type){
+  document.querySelectorAll('.p-opt').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');payType=type;
 }
 
-function selPay(el, type) {
-  document.querySelectorAll('.p-opt').forEach(x => x.classList.remove('sel'));
-  el.classList.add('sel');
-  payType = type;
-}
-
-async function submitOrder() {
-  const name = document.getElementById('oName').value.trim();
-  const phone = document.getElementById('oPhone').value.trim();
-  const addr = document.getElementById('oAddr').value.trim();
-  const note = document.getElementById('oNote').value.trim();
-
-  if (!name) { alert('❗ Ism familiyani kiriting!'); return; }
-  if (!phone) { alert('❗ Telefon raqamni kiriting!'); return; }
-  if (deliveryType === 'Kuryer' && !addr) { alert('❗ Manzilni kiriting!'); return; }
-  if (!Object.keys(cart).length) { alert('❗ Savat bo\'sh!'); return; }
-
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Yuborilmoqda...';
-
-  const items = Object.keys(cart).map(id => {
-    const p = PRODUCTS.find(x => x.id == id);
-    return { product_id: p.id, name: p.name, price: p.price, qty: cart[id].qty };
+async function submitOrder(){
+  const name=document.getElementById('oName').value.trim();
+  const phone=document.getElementById('oPhone').value.trim();
+  const addr=document.getElementById('oAddr').value.trim();
+  const note=document.getElementById('oNote').value.trim();
+  if(!name){alert('❗ Ism familiyani kiriting!');return;}
+  if(!phone){alert('❗ Telefon raqamni kiriting!');return;}
+  if(deliveryType==='Kuryer'&&!addr){alert('❗ Manzilni kiriting!');return;}
+  if(!Object.keys(cart).length){alert('❗ Savat bo\'sh!');return;}
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.innerHTML='⏳ Yuborilmoqda...';
+  const items=Object.keys(cart).map(id=>{
+    const p=PRODUCTS.find(x=>x.id==id);
+    return{product_id:p.id,name:p.name,price:p.price,qty:cart[id].qty};
   });
-  const delivery = deliveryType === 'Kuryer' ? 15000 : 0;
-  const total = items.reduce((s, i) => s + i.price * i.qty, 0) + delivery;
-
-  const orderData = {
-    name, phone,
-    address: deliveryType === 'Kuryer' ? addr : 'O\'zim olaman',
-    delivery: deliveryType,
-    payment: payType,
-    note: note || null,
-    items, total,
-    telegram_id: tg?.initDataUnsafe?.user?.id || null,
-    telegram_username: tg?.initDataUnsafe?.user?.username || null,
-    init_data: tg?.initData || null,
+  const delivery=deliveryType==='Kuryer'?15000:0;
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0)+delivery;
+  const orderData={
+    name,phone,
+    address:deliveryType==='Kuryer'?addr:'O\'zim olaman',
+    delivery:deliveryType,payment:payType,
+    note:note||null,items,total,
+    telegram_id:tg?.initDataUnsafe?.user?.id||null,
+    telegram_username:tg?.initDataUnsafe?.user?.username||null,
+    init_data:tg?.initData||null,
   };
-
-  if (tg && tg.sendData) {
-    tg.sendData(JSON.stringify(orderData));
-  }
-
-  const oid = 'SS-' + Math.floor(10000 + Math.random() * 90000);
-  document.getElementById('orderNumEl').textContent = 'Buyurtma № ' + oid;
+  if(tg&&tg.sendData) tg.sendData(JSON.stringify(orderData));
+  const oid='SS-'+Math.floor(10000+Math.random()*90000);
+  document.getElementById('orderNumEl').textContent='Buyurtma № '+oid;
   document.getElementById('successEl').classList.add('open');
-
-  btn.disabled = false;
-  btn.innerHTML = '✅ Buyurtma berish';
+  btn.disabled=false;btn.innerHTML='✅ Buyurtma berish';
 }
 
-function closeSuccess() {
+function closeSuccess(){
   document.getElementById('successEl').classList.remove('open');
-  cart = {}; updateBadge(); renderProds();
-  switchTab('catalog');
+  cart={};updateBadge();renderProds();switchTab('catalog');
 }
 
-// ============================================================
-// START
-// ============================================================
 init();
 </script>
 </body>
