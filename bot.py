@@ -328,7 +328,8 @@ def admin_kb():
     b.row(KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📦 Buyurtmalar"))
     b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
     b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="👥 Mijozlar"))
-    b.row(KeyboardButton(text="📢 Xabar yuborish"), KeyboardButton(text="🔙 Asosiy menyu"))
+    b.row(KeyboardButton(text="📋 Mijozlar hisoboti"), KeyboardButton(text="📢 Xabar yuborish"))
+    b.row(KeyboardButton(text="🔙 Asosiy menyu"))
     return b.as_markup(resize_keyboard=True)
 
 def categories_kb(categories):
@@ -915,10 +916,125 @@ async def promo_expires(message: Message, state: FSMContext):
 async def show_users(message: Message):
     if message.from_user.id != ADMIN_ID: return
     users = await db.get_all_users()
-    text = f"👥 <b>Mijozlar ({len(users)} ta):</b>\n\n"
+    text = f"👥 <b>Mijozlar ro'yxati ({len(users)} ta):</b>\n\n"
     for u in users[:20]:
-        text += f"- {u['full_name']} | @{u['username'] or '-'} | {u['phone'] or '-'}\n"
+        text += f"👤 <b>{u['full_name']}</b>\n"
+        text += f"   📱 {u['phone'] or '-'} | @{u['username'] or '-'}\n"
+        text += f"   🆔 {u['telegram_id']}\n\n"
+    if len(users) > 20:
+        text += f"<i>...va yana {len(users)-20} ta mijoz</i>"
     await message.answer(text, parse_mode="HTML")
+
+
+@dp.message(F.text == "📋 Mijozlar hisoboti")
+async def customer_report(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        # Har bir foydalanuvchi uchun buyurtmalar statistikasi
+        rows = await db_conn.fetch("""
+            SELECT
+                u.telegram_id,
+                u.full_name,
+                u.username,
+                u.phone,
+                COUNT(o.id) as order_count,
+                COALESCE(SUM(o.total_price), 0) as total_spent,
+                MAX(o.created_at) as last_order
+            FROM users u
+            LEFT JOIN orders o ON u.telegram_id = o.user_id
+            GROUP BY u.telegram_id, u.full_name, u.username, u.phone
+            ORDER BY total_spent DESC
+        """)
+
+    if not rows:
+        await message.answer("Hali mijozlar yo'q.")
+        return
+
+    # Har bir mijoz uchun alohida xabar (buyurtmali mijozlar)
+    active = [r for r in rows if r['order_count'] > 0]
+    passive = [r for r in rows if r['order_count'] == 0]
+
+    # Umumiy hisobot
+    total_users = len(rows)
+    total_revenue = sum(r['total_spent'] for r in rows)
+    total_orders = sum(r['order_count'] for r in rows)
+
+    summary = (
+        f"📋 <b>MIJOZLAR HISOBOTI</b>\n\n"
+        f"👥 Jami foydalanuvchi: <b>{total_users} ta</b>\n"
+        f"🛒 Buyurtma berganlar: <b>{len(active)} ta</b>\n"
+        f"😴 Faol bo'lmaganlar: <b>{len(passive)} ta</b>\n"
+        f"📦 Jami buyurtmalar: <b>{total_orders} ta</b>\n"
+        f"💰 Jami tushum: <b>{total_revenue:,.0f} so'm</b>\n"
+        f"{'─'*30}\n\n"
+        f"🏆 <b>Xaridorlar reytingi:</b>\n\n"
+    )
+    await message.answer(summary, parse_mode="HTML")
+
+    # Har bir faol mijoz uchun batafsil ma'lumot
+    for i, r in enumerate(active[:15], 1):
+        # Bu mijozning buyurtmalari va mahsulotlari
+        p2 = await get_pool()
+        async with p2.acquire() as db_conn2:
+            orders = await db_conn2.fetch(
+                "SELECT items, total_price, status, created_at FROM orders WHERE user_id=$1 ORDER BY created_at DESC",
+                r['telegram_id']
+            )
+
+        # Barcha mahsulotlarni yig'ish
+        product_counter = {}
+        for order in orders:
+            try:
+                items = json.loads(order['items'])
+                for item in items:
+                    name = item.get('name', '?')
+                    qty = item.get('qty', 1)
+                    price = item.get('price', 0)
+                    if name in product_counter:
+                        product_counter[name]['qty'] += qty
+                        product_counter[name]['sum'] += price * qty
+                    else:
+                        product_counter[name] = {'qty': qty, 'sum': price * qty}
+            except:
+                pass
+
+        # Xabar matni
+        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+        text = (
+            f"{medal} <b>{r['full_name']}</b>\n"
+            f"📱 {r['phone'] or '-'} | @{r['username'] or '-'}\n"
+            f"🛒 Buyurtmalar: <b>{r['order_count']} ta</b>\n"
+            f"💰 Jami sarfladi: <b>{r['total_spent']:,.0f} so'm</b>\n"
+            f"📅 So'nggi buyurtma: {str(r['last_order'])[:10]}\n"
+        )
+
+        if product_counter:
+            text += f"\n📦 <b>Sotib olgan mahsulotlari:</b>\n"
+            for prod_name, info in sorted(product_counter.items(), key=lambda x: x[1]['sum'], reverse=True):
+                text += f"  • {prod_name} — {info['qty']} dona ({info['sum']:,.0f} so'm)\n"
+
+        # Buyurtma holatlari
+        status_counts = {}
+        for order in orders:
+            st = order['status']
+            status_counts[st] = status_counts.get(st, 0) + 1
+        if status_counts:
+            statuses = " | ".join([f"{STATUS_EMOJI.get(k,'📦')}{v}" for k, v in status_counts.items()])
+            text += f"\n📊 {statuses}"
+
+        await message.answer(text, parse_mode="HTML")
+
+    if len(active) > 15:
+        await message.answer(f"<i>...va yana {len(active)-15} ta faol mijoz</i>", parse_mode="HTML")
+
+    if passive:
+        await message.answer(
+            f"😴 <b>Hali xarid qilmagan foydalanuvchilar: {len(passive)} ta</b>\n"
+            f"Ularga reklama xabar yuborish uchun 📢 Xabar yuborish tugmasidan foydalaning.",
+            parse_mode="HTML"
+        )
 
 @dp.message(F.text == "📢 Xabar yuborish")
 async def broadcast_start(message: Message, state: FSMContext):
