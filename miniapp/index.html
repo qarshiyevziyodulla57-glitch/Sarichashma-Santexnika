@@ -127,8 +127,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .back-btn{background:none;border:none;cursor:pointer;color:var(--text);padding:4px}
 .back-btn svg{width:22px;height:22px}
 .detail-title{font-size:16px;font-weight:600}
-.detail-img{font-size:72px;height:200px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
-.detail-img img{width:100%;height:100%;object-fit:cover}
+/* IMAGE SLIDER */
+.img-slider{position:relative;background:var(--bg);overflow:hidden}
+.img-slider-track{display:flex;transition:transform .3s ease;height:260px}
+.img-slide{flex-shrink:0;width:100%;height:260px;display:flex;align-items:center;justify-content:center;font-size:72px;cursor:zoom-in}
+.img-slide img{width:100%;height:100%;object-fit:contain}
+.slider-dots{display:flex;justify-content:center;gap:6px;padding:8px 0;background:var(--bg)}
+.slider-dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:.2s}
+.slider-dot.active{background:var(--blue);width:18px;border-radius:4px}
+.slider-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);color:#fff;border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;z-index:2}
+.slider-arrow.left{left:8px}
+.slider-arrow.right{right:8px}
+/* LIGHTBOX */
+.lightbox{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.95);z-index:1000;display:none;align-items:center;justify-content:center}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:4px}
+.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.detail-img{font-size:72px;height:260px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+.detail-img img{width:100%;height:100%;object-fit:contain}
 .detail-body{padding:18px 16px;flex:1}
 .detail-name{font-size:19px;font-weight:700;margin-bottom:4px}
 .detail-brand{font-size:13px;color:var(--muted);margin-bottom:12px}
@@ -342,6 +358,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </button>
 </nav>
 
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightboxEl" onclick="closeLightbox()">
+  <button class="lightbox-close">✕</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
 <!-- PRODUCT DETAIL -->
 <div class="detail" id="detailEl">
   <div class="detail-header">
@@ -350,7 +372,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </button>
     <span class="detail-title">Mahsulot</span>
   </div>
-  <div class="detail-img" id="dImg"></div>
+  <div class="img-slider" id="dImgSlider">
+    <div class="img-slider-track" id="dImgTrack"></div>
+    <button class="slider-arrow left" id="sliderLeft" onclick="slideImg(-1)" style="display:none">‹</button>
+    <button class="slider-arrow right" id="sliderRight" onclick="slideImg(1)" style="display:none">›</button>
+  </div>
+  <div class="slider-dots" id="sliderDots"></div>
   <div class="detail-body">
     <div class="detail-name" id="dName"></div>
     <div class="detail-brand" id="dBrand"></div>
@@ -658,19 +685,24 @@ function renderPromos() {
 }
 
 // ============================================================
-// PRODUCT DETAIL
+// PRODUCT DETAIL + SLIDER + LIGHTBOX
 // ============================================================
+let sliderImages = [];
+let sliderIdx = 0;
+
 function openDetail(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
   currentDetailId = id;
 
-  const imgEl = document.getElementById('dImg');
-  if (p.image_url && p.image_url.startsWith('http')) {
-    imgEl.innerHTML = `<img src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.textContent='${p.cat_emoji||'📦'}'">`;
-  } else {
-    imgEl.textContent = p.cat_emoji || '📦';
-  }
+  // Rasmlar — vergul bilan ajratilgan bo'lishi mumkin
+  sliderImages = (p.image_url || '')
+    .split(',')
+    .map(u => u.trim())
+    .filter(u => u.startsWith('http'));
+  sliderIdx = 0;
+
+  buildSlider(p);
 
   document.getElementById('dName').textContent = p.name;
   document.getElementById('dBrand').textContent = p.cat_name || '';
@@ -690,6 +722,64 @@ function openDetail(id) {
   document.getElementById('dDesc').textContent = p.description || 'Tavsif mavjud emas';
   updateDetailBtn(id);
   document.getElementById('detailEl').classList.add('open');
+}
+
+function buildSlider(p) {
+  const track = document.getElementById('dImgTrack');
+  const dots = document.getElementById('sliderDots');
+  const btnL = document.getElementById('sliderLeft');
+  const btnR = document.getElementById('sliderRight');
+
+  if (!sliderImages.length) {
+    // Rasm yo'q — emoji ko'rsat
+    track.innerHTML = `<div class="img-slide" style="font-size:72px">${p.cat_emoji||'📦'}</div>`;
+    dots.innerHTML = '';
+    btnL.style.display = btnR.style.display = 'none';
+    return;
+  }
+
+  track.innerHTML = sliderImages.map((url, i) =>
+    `<div class="img-slide" onclick="openLightbox('${url}')">
+      <img src="${url}" alt="rasm ${i+1}" onerror="this.parentElement.innerHTML='${p.cat_emoji||'📦'}'">
+    </div>`
+  ).join('');
+
+  // Dots
+  dots.innerHTML = sliderImages.length > 1
+    ? sliderImages.map((_, i) => `<div class="slider-dot ${i===0?'active':''}" onclick="goSlide(${i})"></div>`).join('')
+    : '';
+
+  // Arrows
+  const multi = sliderImages.length > 1;
+  btnL.style.display = btnR.style.display = multi ? 'flex' : 'none';
+
+  updateSlider();
+}
+
+function updateSlider() {
+  document.getElementById('dImgTrack').style.transform = `translateX(-${sliderIdx * 100}%)`;
+  document.querySelectorAll('.slider-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === sliderIdx);
+  });
+}
+
+function slideImg(dir) {
+  sliderIdx = (sliderIdx + dir + sliderImages.length) % sliderImages.length;
+  updateSlider();
+}
+
+function goSlide(i) {
+  sliderIdx = i;
+  updateSlider();
+}
+
+function openLightbox(url) {
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightboxEl').classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('lightboxEl').classList.remove('open');
 }
 
 function updateDetailBtn(id) {
