@@ -1,4 +1,3 @@
-# v2
 import asyncio
 import logging
 import json
@@ -527,14 +526,28 @@ async def api_cancel_order(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == 'OPTIONS':
+        return web.Response(headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
+    try:
+        response = await handler(request)
+    except web.HTTPException as e:
+        response = e
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
 async def start_api_server():
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/api/products", api_products)
     app.router.add_get("/api/orders", api_orders)
     app.router.add_post("/api/orders/create", api_create_order)
     app.router.add_post("/api/orders/cancel", api_cancel_order)
-    app.router.add_options("/api/orders/create", api_options)
-    app.router.add_options("/api/orders/cancel", api_options)
+    app.router.add_route("OPTIONS", "/{path_info:.*}", api_options)
     app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
@@ -1528,9 +1541,11 @@ async def handle_web_app_data(message: Message):
 # ===== MAIN =====
 async def main():
     await db.create_tables()
+    # Webhook ni tozalash — conflict muammosini hal qiladi
+    await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(
         start_api_server(),
-        dp.start_polling(bot)
+        dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     )
 
 if __name__ == "__main__":
