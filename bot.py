@@ -449,15 +449,91 @@ async def api_orders(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
-async def api_health(request):
-    return web.Response(text="OK")
+async def api_cancel_order(request):
+    """Mijoz buyurtmani bekor qiladi — faqat 'yangi' holatda"""
+    try:
+        data = await request.json()
+        order_id = data.get("order_id")
+        telegram_id = data.get("telegram_id")
+
+        if not order_id or not telegram_id:
+            return web.Response(
+                text=json.dumps({"error": "order_id va telegram_id kerak"}),
+                content_type="application/json", status=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        order = await db.get_order(int(order_id))
+        if not order:
+            return web.Response(
+                text=json.dumps({"error": "Buyurtma topilmadi"}),
+                content_type="application/json", status=404,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        # Faqat o'z buyurtmasini bekor qila oladi
+        if str(order['user_id']) != str(telegram_id):
+            return web.Response(
+                text=json.dumps({"error": "Bu sizning buyurtmangiz emas"}),
+                content_type="application/json", status=403,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        # Faqat "yangi" holatda bekor qilish mumkin
+        if order['status'] != 'yangi':
+            return web.Response(
+                text=json.dumps({"error": "Bu buyurtmani bekor qilib bo'lmaydi", "status": order['status']}),
+                content_type="application/json", status=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        await db.update_order_status(int(order_id), 'bekor')
+
+        # Adminga xabar
+        try:
+            await bot.send_message(
+                ADMIN_ID,
+                f"❌ <b>BUYURTMA BEKOR QILINDI #{order_id}</b>\n\n"
+                f"🆔 Mijoz: {telegram_id}\n"
+                f"💰 {order['total_price']:,.0f} so'm\n"
+                f"📍 {order['address']}",
+                parse_mode="HTML"
+            )
+        except: pass
+
+        # Guruhga xabar
+        try:
+            await bot.send_message(
+                GROUP_ID,
+                f"❌ <b>BUYURTMA BEKOR QILINDI #{order_id}</b>\n\n"
+                f"🆔 Mijoz: {telegram_id}\n"
+                f"💰 {order['total_price']:,.0f} so'm\n"
+                f"📍 {order['address']}",
+                parse_mode="HTML"
+            )
+        except: pass
+
+        return web.Response(
+            text=json.dumps({"success": True}),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        logger.error(f"Cancel order xatosi: {e}")
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json", status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 async def start_api_server():
     app = web.Application()
     app.router.add_get("/api/products", api_products)
     app.router.add_get("/api/orders", api_orders)
     app.router.add_post("/api/orders/create", api_create_order)
+    app.router.add_post("/api/orders/cancel", api_cancel_order)
     app.router.add_options("/api/orders/create", api_options)
+    app.router.add_options("/api/orders/cancel", api_options)
     app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
