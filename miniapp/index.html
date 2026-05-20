@@ -826,14 +826,22 @@ const STATUS_INFO = {
 async function loadOrders(){
   const cont = document.getElementById('ordersContent');
   const tid = tg?.initDataUnsafe?.user?.id;
+
   if(!tid){
-    cont.innerHTML=`<div class="empty"><div class="empty-icon">👤</div><p>Buyurtmalarni ko'rish uchun<br>Telegram orqali kiring.</p></div>`;
-    return;
+    // Telegram ID yo'q — lekin URL parametrdan olishga urinib ko'ramiz
+    const urlTid = new URLSearchParams(window.location.search).get('tid');
+    if(!urlTid){
+      cont.innerHTML=`<div class="empty"><div class="empty-icon">📦</div>
+        <p>Buyurtmalarni ko'rish uchun<br>botdagi <b>🛒 Do'konni ochish</b><br>tugmasi orqali kiring.</p></div>`;
+      return;
+    }
   }
+
+  const telegramId = tid || new URLSearchParams(window.location.search).get('tid');
   cont.innerHTML=`<div class="loading"><div class="spin"></div><br>Yuklanmoqda...</div>`;
   try{
-    const res = await fetch(`${API_BASE}/api/orders?telegram_id=${tid}`);
-    if(!res.ok) throw new Error('Server xatosi');
+    const res = await fetch(`${API_BASE}/api/orders?telegram_id=${telegramId}`);
+    if(!res.ok) throw new Error('Server xatosi: '+res.status);
     const data = await res.json();
     const orders = data.orders||[];
     if(!orders.length){
@@ -858,7 +866,7 @@ async function loadOrders(){
       </div>`;
     }).join('');
   }catch(e){
-    cont.innerHTML=`<div class="error-box">❌ Xatolik.<br>
+    cont.innerHTML=`<div class="error-box">❌ ${e.message}<br>
       <button onclick="loadOrders()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;margin-top:8px;font-weight:700;font-family:Nunito,sans-serif">🔄 Qayta</button></div>`;
   }
 }
