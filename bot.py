@@ -323,7 +323,93 @@ async def api_products(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
-async def api_orders(request):
+async def api_create_order(request):
+    """Mini App dan kelgan buyurtmani qabul qiladi"""
+    try:
+        data = await request.json()
+        name     = data.get("name", "Noma'lum")
+        phone    = data.get("phone", "-")
+        address  = data.get("address", "-")
+        delivery = data.get("delivery", "Kuryer")
+        payment  = data.get("payment", "Naqd")
+        note     = data.get("note")
+        items    = data.get("items", [])
+        total    = data.get("total", 0)
+        telegram_id = data.get("telegram_id")
+        username    = data.get("telegram_username")
+
+        if telegram_id:
+            await db.add_user(int(telegram_id), name, username)
+
+        uid = int(telegram_id) if telegram_id else 0
+        oid = await db.create_order(
+            user_id=uid, items=items, total_price=total,
+            address=address, phone=phone,
+            note=f"To'lov: {payment} | {note or ''}"
+        )
+
+        items_text = "\n".join([f"• {i['name']} x{i['qty']} — {i['price']*i['qty']:,.0f} so'm" for i in items])
+        order_text = (
+            f"🆕 <b>YANGI BUYURTMA #{oid}</b> (Mini App)\n\n"
+            f"👤 {name}\n"
+            f"🔗 @{username or '-'} | 🆔 {telegram_id or '-'}\n\n"
+            f"🛒 {items_text}\n\n"
+            f"💰 {total:,.0f} so'm\n"
+            f"🚚 {delivery}\n💳 {payment}\n"
+            f"📍 {address}\n📱 {phone}"
+            f"{chr(10)+'📝 '+note if note else ''}"
+        )
+
+        # Adminga yuborish
+        try:
+            await bot.send_message(ADMIN_ID, order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Adminga yuborishda xato: {e}")
+
+        # Guruhga yuborish
+        try:
+            await bot.send_message(GROUP_ID, order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Guruhga yuborishda xato: {e}")
+
+        # Mijozga xabar
+        if telegram_id:
+            try:
+                await bot.send_message(
+                    int(telegram_id),
+                    f"✅ <b>Buyurtmangiz qabul qilindi!</b>\n\n"
+                    f"🔖 Buyurtma #{oid}\n\n{items_text}\n\n"
+                    f"💰 Jami: <b>{total:,.0f} so'm</b>\n"
+                    f"🚚 {delivery}\n💳 {payment}\n"
+                    f"📍 {address}\n📱 {phone}\n\n"
+                    f"⏳ Tez orada operatorimiz bog'lanadi!",
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"Mijozga yuborishda xato: {e}")
+
+        return web.Response(
+            text=json.dumps({"success": True, "order_id": oid}, ensure_ascii=False),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        logger.error(f"Order API xatosi: {e}")
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json", status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+
+async def api_options(request):
+    """CORS preflight"""
+    return web.Response(
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+    )
     """Mijozning buyurtmalarini qaytaradi (telegram_id bo'yicha)"""
     try:
         telegram_id = request.rel_url.query.get('telegram_id')
@@ -368,6 +454,8 @@ async def start_api_server():
     app = web.Application()
     app.router.add_get("/api/products", api_products)
     app.router.add_get("/api/orders", api_orders)
+    app.router.add_post("/api/orders/create", api_create_order)
+    app.router.add_options("/api/orders/create", api_options)
     app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
