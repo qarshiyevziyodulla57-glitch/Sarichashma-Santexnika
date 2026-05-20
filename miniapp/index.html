@@ -969,20 +969,46 @@ async function submitOrder(){
   if(!phone){alert('❗ Telefon raqamni kiriting!');return;}
   if(deliveryType==='Kuryer'&&!addr){alert('❗ Manzilni kiriting!');return;}
   if(!Object.keys(cart).length){alert('❗ Savat bo\'sh!');return;}
+
   const btn=document.getElementById('submitBtn');
   btn.disabled=true;btn.innerHTML='⏳ Yuborilmoqda...';
+
   const items=Object.keys(cart).map(id=>{
     const p=PRODUCTS.find(x=>x.id==id);
     return{product_id:p.id,name:p.name,price:p.price,qty:cart[id].qty};
   });
   const delivery=deliveryType==='Kuryer'?15000:0;
   const total=items.reduce((s,i)=>s+i.price*i.qty,0)+delivery;
-  const orderData={name,phone,address:deliveryType==='Kuryer'?addr:'O\'zim olaman',delivery:deliveryType,payment:payType,note:note||null,items,total,
-    telegram_id:tg?.initDataUnsafe?.user?.id||null,telegram_username:tg?.initDataUnsafe?.user?.username||null,init_data:tg?.initData||null};
-  if(tg&&tg.sendData) tg.sendData(JSON.stringify(orderData));
-  const oid='SS-'+Math.floor(10000+Math.random()*90000);
-  document.getElementById('orderNumEl').textContent='Buyurtma № '+oid;
-  document.getElementById('successEl').classList.add('open');
+
+  const orderData={
+    name, phone,
+    address: deliveryType==='Kuryer'?addr:'O\'zim olaman',
+    delivery: deliveryType,
+    payment: payType,
+    note: note||null,
+    items, total,
+    telegram_id: tg?.initDataUnsafe?.user?.id || new URLSearchParams(window.location.search).get('tid') || null,
+    telegram_username: tg?.initDataUnsafe?.user?.username || null,
+  };
+
+  try{
+    const res = await fetch(`${API_BASE}/api/orders/create`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(orderData)
+    });
+    const data = await res.json();
+    if(data.success){
+      const oid = data.order_id || 'SS-'+Math.floor(10000+Math.random()*90000);
+      document.getElementById('orderNumEl').textContent='Buyurtma № '+oid;
+      document.getElementById('successEl').classList.add('open');
+    } else {
+      throw new Error(data.error || 'Xatolik');
+    }
+  }catch(e){
+    alert('❌ Xatolik: '+e.message+'\nQaytadan urinib ko\'ring.');
+  }
+
   btn.disabled=false;btn.innerHTML='✅ Buyurtma berish';
 }
 
