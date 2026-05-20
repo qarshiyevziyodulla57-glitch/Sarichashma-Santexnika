@@ -1,4 +1,3 @@
-# v2
 import asyncio
 import logging
 import json
@@ -526,6 +525,9 @@ async def api_cancel_order(request):
             content_type="application/json", status=500,
             headers={"Access-Control-Allow-Origin": "*"}
         )
+
+async def api_health(request):
+    return web.Response(text="OK", headers={"Access-Control-Allow-Origin": "*"})
 
 async def start_api_server():
     app = web.Application()
