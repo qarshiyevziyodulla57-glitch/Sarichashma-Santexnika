@@ -300,12 +300,51 @@ async def api_products(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
+async def api_orders(request):
+    """Mijozning buyurtmalarini qaytaradi (telegram_id bo'yicha)"""
+    try:
+        telegram_id = request.rel_url.query.get('telegram_id')
+        if not telegram_id:
+            return web.Response(
+                text=json.dumps({"error": "telegram_id kerak"}),
+                content_type="application/json", status=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        orders = await db.get_orders_by_user(int(telegram_id))
+        orders_list = []
+        for o in orders:
+            try: items = json.loads(o['items'])
+            except: items = []
+            orders_list.append({
+                "id": o['id'],
+                "items": items,
+                "total_price": o['total_price'],
+                "address": o['address'],
+                "phone": o['phone'],
+                "status": o['status'],
+                "note": o['note'],
+                "created_at": str(o['created_at'])[:16],
+            })
+        return web.Response(
+            text=json.dumps({"orders": orders_list}, ensure_ascii=False),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        logger.error(f"Orders API xatosi: {e}")
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json", status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+
 async def api_health(request):
     return web.Response(text="OK")
 
 async def start_api_server():
     app = web.Application()
     app.router.add_get("/api/products", api_products)
+    app.router.add_get("/api/orders", api_orders)
     app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
@@ -367,7 +406,7 @@ def cart_kb(cart_items):
 
 def order_status_kb(oid):
     statuses = [
-        ("🆕 Yangi", "yangi"), ("⚙️ Jarayonda", "jarayonda"),
+        ("🆕 Yangi", "yangi"), ("📦 Yig'ilmoqda", "yigilmoqda"),
         ("🚚 Yetkazilmoqda", "yetkazilmoqda"), ("✅ Yetkazildi", "yetkazildi"),
         ("❌ Bekor", "bekor")
     ]
@@ -380,7 +419,7 @@ def order_status_kb(oid):
 def orders_filter_kb():
     b = InlineKeyboardBuilder()
     b.button(text="🆕 Yangi", callback_data="filter_yangi")
-    b.button(text="⚙️ Jarayonda", callback_data="filter_jarayonda")
+    b.button(text="📦 Yig'ilmoqda", callback_data="filter_yigilmoqda")
     b.button(text="🚚 Yetkazilmoqda", callback_data="filter_yetkazilmoqda")
     b.button(text="✅ Barchasi", callback_data="filter_all")
     b.adjust(2)
@@ -441,7 +480,7 @@ class BroadcastState(StatesGroup):
     message = State()
 
 
-STATUS_EMOJI = {"yangi": "🆕", "jarayonda": "⚙️", "yetkazilmoqda": "🚚", "yetkazildi": "✅", "bekor": "❌"}
+STATUS_EMOJI = {"yangi": "🆕", "yigilmoqda": "📦", "yetkazilmoqda": "🚚", "yetkazildi": "✅", "bekor": "❌"}
 
 
 # ===== START =====
