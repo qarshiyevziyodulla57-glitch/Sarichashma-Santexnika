@@ -92,7 +92,17 @@ class Database:
                     quantity INTEGER DEFAULT 1
                 )""")
             await db.execute("""
-                CREATE TABLE IF NOT EXISTS promotions (
+                CREATE TABLE IF NOT EXISTS banners (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    sub TEXT,
+                    tag TEXT,
+                    image_url TEXT,
+                    color TEXT DEFAULT 'linear-gradient(135deg,#1a5fb4,#2e86de)',
+                    cat_id INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    sort_order INTEGER DEFAULT 0
+                )""")
                     id SERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
                     description TEXT,
@@ -287,8 +297,18 @@ async def api_products(request):
             "cat_name": p['cat_name'], "cat_emoji": p['cat_emoji'],
         } for p in products]
 
+        # Bannerlar
+        p3 = await get_pool()
+        async with p3.acquire() as db3:
+            banners_rows = await db3.fetch("SELECT * FROM banners WHERE is_active=1 ORDER BY sort_order, id")
+        banners_list = [{
+            "id": b['id'], "title": b['title'], "sub": b['sub'],
+            "tag": b['tag'], "image_url": b['image_url'],
+            "color": b['color'], "cat_id": b['cat_id'],
+        } for b in banners_rows]
+
         return web.Response(
-            text=json.dumps({"categories": cats_list, "products": prods_list}, ensure_ascii=False),
+            text=json.dumps({"categories": cats_list, "products": prods_list, "banners": banners_list}, ensure_ascii=False),
             content_type="application/json",
             headers={"Access-Control-Allow-Origin": "*"}
         )
@@ -366,9 +386,9 @@ def admin_kb():
     b = ReplyKeyboardBuilder()
     b.row(KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📦 Buyurtmalar"))
     b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
-    b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="👥 Mijozlar"))
-    b.row(KeyboardButton(text="📋 Mijozlar hisoboti"), KeyboardButton(text="📢 Xabar yuborish"))
-    b.row(KeyboardButton(text="🔙 Asosiy menyu"))
+    b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="🖼 Banner qoshish"))
+    b.row(KeyboardButton(text="📋 Mijozlar hisoboti"), KeyboardButton(text="👥 Mijozlar"))
+    b.row(KeyboardButton(text="📢 Xabar yuborish"), KeyboardButton(text="🔙 Asosiy menyu"))
     return b.as_markup(resize_keyboard=True)
 
 def categories_kb(categories):
@@ -469,6 +489,13 @@ class EditProductState(StatesGroup):
     select = State()
     field = State()
     value = State()
+
+class AddBannerState(StatesGroup):
+    title = State()
+    sub = State()
+    tag = State()
+    image = State()
+    cat_id = State()
 
 class AddPromoState(StatesGroup):
     title = State()
@@ -910,6 +937,75 @@ async def ep_value(message: Message, state: FSMContext):
     await db.update_product_field(data["product_id"], db_field, value)
     await state.clear()
     await message.answer("✅ Yangilandi!", reply_markup=admin_kb())
+
+
+# ===== BANNER ADMIN =====
+@dp.message(F.text == "🖼 Banner qoshish")
+async def banner_start(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID: return
+    await state.set_state(AddBannerState.title)
+    await message.answer("🖼 <b>Yangi banner qo'shish</b>\n\n📝 Banner sarlavhasini kiriting:\n<i>Masalan: Yoz mavsumi chegirmalari</i>", parse_mode="HTML")
+
+@dp.message(AddBannerState.title)
+async def banner_title(message: Message, state: FSMContext):
+    await state.update_data(title=message.text)
+    await state.set_state(AddBannerState.sub)
+    await message.answer("📄 Qisqa tavsif kiriting (yoq: Yoq):\n<i>Masalan: 30% gacha chegirma</i>", parse_mode="HTML")
+
+@dp.message(AddBannerState.sub)
+async def banner_sub(message: Message, state: FSMContext):
+    await state.update_data(sub=None if message.text.lower() in ["yoq","-"] else message.text)
+    await state.set_state(AddBannerState.tag)
+    await message.answer("🏷 Tag kiriting (yoq: Yoq):\n<i>Masalan: 🔥 Aksiya yoki ☀️ Yoz mavsumi</i>", parse_mode="HTML")
+
+@dp.message(AddBannerState.tag)
+async def banner_tag(message: Message, state: FSMContext):
+    await state.update_data(tag=None if message.text.lower() in ["yoq","-"] else message.text)
+    await state.set_state(AddBannerState.image)
+    await message.answer("🖼 Banner rasmini yuboring yoki URL kiriting (yoq: Yoq):")
+
+@dp.message(AddBannerState.image, F.photo)
+async def banner_image_photo(message: Message, state: FSMContext):
+    # Telegram file_id saqlash (URL kerak bo'lsa alohida)
+    await state.update_data(image_url=message.photo[-1].file_id)
+    await _banner_ask_cat(message, state)
+
+@dp.message(AddBannerState.image, F.text)
+async def banner_image_text(message: Message, state: FSMContext):
+    img = None if message.text.lower() in ["yoq","-"] else message.text
+    await state.update_data(image_url=img)
+    await _banner_ask_cat(message, state)
+
+async def _banner_ask_cat(message: Message, state: FSMContext):
+    cats = await db.get_categories()
+    text = "📂 Qaysi kategoriyaga bog'lash? (0 = barchasi):\n\n0. 🏠 Barchasi\n"
+    for c in cats:
+        text += f"{c['id']}. {c['emoji']} {c['name']}\n"
+    await state.set_state(AddBannerState.cat_id)
+    await message.answer(text)
+
+@dp.message(AddBannerState.cat_id)
+async def banner_cat(message: Message, state: FSMContext):
+    try:
+        cat_id = int(message.text)
+    except:
+        cat_id = 0
+    data = await state.get_data()
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute(
+            "INSERT INTO banners (title, sub, tag, image_url, cat_id) VALUES ($1,$2,$3,$4,$5)",
+            data['title'], data.get('sub'), data.get('tag'), data.get('image_url'), cat_id
+        )
+    await state.clear()
+    await message.answer(
+        f"✅ <b>Banner qo'shildi!</b>\n\n"
+        f"📝 {data['title']}\n"
+        f"🏷 {data.get('tag') or '-'}\n"
+        f"📂 Kategoriya: {cat_id or 'Barchasi'}\n\n"
+        f"Mini App da ko'rish uchun sahifani yangilang.",
+        reply_markup=admin_kb(), parse_mode="HTML"
+    )
 
 
 # ===== PROMO ADMIN =====
