@@ -949,22 +949,35 @@ function closeDetail(){document.getElementById('detailEl').classList.remove('ope
 
 async function cancelOrder(orderId){
   const tid = tg?.initDataUnsafe?.user?.id || new URLSearchParams(window.location.search).get('tid');
-  if(!confirm('❌ Buyurtma #'+orderId+' ni bekor qilmoqchimisiz?')) return;
+
+  // Telegram WebApp da confirm() ishlamaydi — to'g'ridan yuboramiz
+  if(tg && tg.showConfirm){
+    tg.showConfirm('Buyurtma #'+orderId+' ni bekor qilmoqchimisiz?', async (confirmed)=>{
+      if(confirmed) await doCancelOrder(orderId, tid);
+    });
+  } else {
+    await doCancelOrder(orderId, tid);
+  }
+}
+
+async function doCancelOrder(orderId, tid){
   try{
     const res = await fetch(`${API_BASE}/api/orders/cancel`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({order_id: orderId, telegram_id: tid})
+      body:JSON.stringify({order_id: orderId, telegram_id: String(tid)})
     });
     const data = await res.json();
     if(data.success){
-      alert('✅ Buyurtma bekor qilindi!');
-      loadOrders(); // Ro'yxatni yangilash
+      if(tg && tg.showAlert) tg.showAlert('✅ Buyurtma bekor qilindi!');
+      loadOrders();
     } else {
-      alert('❌ '+( data.error||'Xatolik yuz berdi'));
+      if(tg && tg.showAlert) tg.showAlert('❌ '+(data.error||'Xatolik'));
+      else alert('❌ '+(data.error||'Xatolik'));
     }
   }catch(e){
-    alert('❌ Xatolik: '+e.message);
+    if(tg && tg.showAlert) tg.showAlert('❌ Ulanishda xatolik');
+    else alert('❌ '+e.message);
   }
 }
 
