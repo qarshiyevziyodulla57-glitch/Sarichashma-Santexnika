@@ -517,6 +517,7 @@ STATUS_EMOJI = {"yangi": "🆕", "yigilmoqda": "📦", "yetkazilmoqda": "🚚", 
 async def start(message: Message):
     user = message.from_user
     await db.add_user(user.id, user.full_name, user.username)
+    mini_app_url = f"{MINI_APP_URL}?tid={user.id}"
     text = (
         f"👋 Assalomu alaykum, <b>{user.first_name}</b>!\n\n"
         f"🔧 <b>Sarichashma Santexnika</b> botiga xush kelibsiz!\n\n"
@@ -524,7 +525,11 @@ async def start(message: Message):
         f"📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n"
         f"⏰ Ish vaqti: 07:00 - 20:00\n\nQuyidagi menyudan tanlang:"
     )
-    await message.answer(text, reply_markup=main_menu_kb(), parse_mode="HTML")
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🛒 Do'konni ochish", web_app=WebAppInfo(url=mini_app_url)))
+    kb.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
+    kb.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
+    await message.answer(text, reply_markup=kb.as_markup(resize_keyboard=True), parse_mode="HTML")
 
 
 # ===== CATALOG =====
