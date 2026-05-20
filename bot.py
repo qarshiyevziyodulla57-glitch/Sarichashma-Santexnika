@@ -103,6 +103,8 @@ class Database:
                     is_active INTEGER DEFAULT 1,
                     sort_order INTEGER DEFAULT 0
                 )""")
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS promotions (
                     id SERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
                     description TEXT,
