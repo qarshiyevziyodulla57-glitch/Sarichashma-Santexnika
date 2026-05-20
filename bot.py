@@ -410,6 +410,8 @@ async def api_options(request):
             "Access-Control-Allow-Headers": "Content-Type",
         }
     )
+
+async def api_orders(request):
     """Mijozning buyurtmalarini qaytaradi (telegram_id bo'yicha)"""
     try:
         telegram_id = request.rel_url.query.get('telegram_id')
