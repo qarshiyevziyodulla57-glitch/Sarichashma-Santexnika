@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7151724014"))
+GROUP_ID = int(os.environ.get("GROUP_ID", "-5295350118"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:atENenzEouhYSKnETXSyfNrwPOqNzkuZ@postgres.railway.internal:5432/railway")
 MINI_APP_URL = os.environ.get("MINI_APP_URL", "https://qarshiyevziyodulla57-glitch.github.io/Sarichashma-Santexnika/miniapp/")
 
@@ -664,12 +665,24 @@ async def got_note(message: Message, state: FSMContext):
         f"⏳ Tez orada operatorimiz boglanadi!",
         reply_markup=main_menu_kb(), parse_mode="HTML")
     user = message.from_user
-    await bot.send_message(
-        ADMIN_ID,
-        f"🆕 <b>YANGI BUYURTMA #{oid}</b>\n\n👤 {user.full_name}\n🔗 @{user.username or '-'}\n🆔 {user.id}\n\n"
-        f"🛒 {items_text}\n\n💰 {total:,.0f} so'm\n📍 {data['address']}\n📱 {data['phone']}"
-        f"{chr(10)+'📝 '+note if note else ''}",
-        reply_markup=order_status_kb(oid), parse_mode="HTML")
+    order_text = (
+        f"🆕 <b>YANGI BUYURTMA #{oid}</b>\n\n"
+        f"👤 {user.full_name}\n"
+        f"🔗 @{user.username or '-'}\n"
+        f"🆔 {user.id}\n\n"
+        f"🛒 {items_text}\n\n"
+        f"💰 {total:,.0f} so'm\n"
+        f"📍 {data['address']}\n"
+        f"📱 {data['phone']}"
+        f"{chr(10)+'📝 '+note if note else ''}"
+    )
+    # Adminga yuborish
+    await bot.send_message(ADMIN_ID, order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+    # Guruhga yuborish
+    try:
+        await bot.send_message(GROUP_ID, order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Guruhga yuborishda xato: {e}")
 
 @dp.message(F.text == "📦 Buyurtmalarim")
 async def my_orders(message: Message):
@@ -1321,14 +1334,25 @@ async def handle_web_app_data(message: Message):
             reply_markup=main_menu_kb(), parse_mode="HTML"
         )
         user = message.from_user
-        await bot.send_message(
-            ADMIN_ID,
+        miniapp_order_text = (
             f"🆕 <b>YANGI BUYURTMA #{oid}</b> (Mini App)\n\n"
-            f"👤 {name}\n🔗 @{user.username or '-'} | 🆔 {user.id}\n\n"
-            f"🛒 {items_text}\n\n💰 {total:,.0f} so'm\n🚚 {delivery}\n💳 {payment}\n📍 {address}\n📱 {phone}"
-            f"{chr(10)+'📝 '+note if note else ''}",
-            reply_markup=order_status_kb(oid), parse_mode="HTML"
+            f"👤 {name}\n"
+            f"🔗 @{user.username or '-'} | 🆔 {user.id}\n\n"
+            f"🛒 {items_text}\n\n"
+            f"💰 {total:,.0f} so'm\n"
+            f"🚚 {delivery}\n"
+            f"💳 {payment}\n"
+            f"📍 {address}\n"
+            f"📱 {phone}"
+            f"{chr(10)+'📝 '+note if note else ''}"
         )
+        # Adminga yuborish
+        await bot.send_message(ADMIN_ID, miniapp_order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+        # Guruhga yuborish
+        try:
+            await bot.send_message(GROUP_ID, miniapp_order_text, reply_markup=order_status_kb(oid), parse_mode="HTML")
+        except Exception as ge:
+            logger.error(f"Guruhga yuborishda xato: {ge}")
     except Exception as e:
         logger.error(f"Mini App data xatosi: {e}")
         await message.answer("❌ Xatolik yuz berdi. Qaytadan urinib ko'ring.")
