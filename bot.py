@@ -526,29 +526,26 @@ async def api_cancel_order(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
-@web.middleware
-async def cors_middleware(request, handler):
-    if request.method == 'OPTIONS':
+async def start_api_server():
+    app = web.Application()
+    app.router.add_get("/api/products", api_products)
+    app.router.add_get("/api/orders", api_orders)
+    app.router.add_post("/api/orders/create", api_create_order)
+    app.router.add_post("/api/orders/cancel", api_cancel_order)
+    app.router.add_get("/health", api_health)
+
+    # CORS — barcha yo'llarga OPTIONS
+    async def handle_options(request):
         return web.Response(headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         })
-    try:
-        response = await handler(request)
-    except web.HTTPException as e:
-        response = e
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
+    app.router.add_route("OPTIONS", "/api/orders/create", handle_options)
+    app.router.add_route("OPTIONS", "/api/orders/cancel", handle_options)
+    app.router.add_route("OPTIONS", "/api/products", handle_options)
+    app.router.add_route("OPTIONS", "/api/orders", handle_options)
 
-async def start_api_server():
-    app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get("/api/products", api_products)
-    app.router.add_get("/api/orders", api_orders)
-    app.router.add_post("/api/orders/create", api_create_order)
-    app.router.add_post("/api/orders/cancel", api_cancel_order)
-    app.router.add_route("OPTIONS", "/{path_info:.*}", api_options)
-    app.router.add_get("/health", api_health)
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.environ.get("PORT", 8080))
