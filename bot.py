@@ -1,4 +1,3 @@
-# v2
 import asyncio
 import logging
 import json
@@ -944,13 +943,108 @@ async def ep_value(message: Message, state: FSMContext):
 
 # ===== BANNER ADMIN =====
 @dp.message(F.text == "🖼 Banner qoshish")
-async def banner_start(message: Message, state: FSMContext):
+async def banner_menu(message: Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID: return
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        banners = await db_conn.fetch("SELECT * FROM banners ORDER BY sort_order, id")
+
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yangi banner qo'shish", callback_data="banner_add")
+    b.adjust(1)
+
+    if banners:
+        text = "🖼 <b>Bannerlar ro'yxati:</b>\n\n"
+        for ban in banners:
+            status = "✅" if ban['is_active'] else "❌"
+            text += f"{status} <b>ID:{ban['id']}</b> — {ban['title']}\n"
+            b.button(text=f"✏️ {ban['title'][:20]}", callback_data=f"banner_edit_{ban['id']}")
+            b.button(text=f"🗑 O'chir", callback_data=f"banner_del_{ban['id']}")
+        b.adjust(1, *[2]*len(banners))
+    else:
+        text = "🖼 <b>Hozircha bannerlar yo'q.</b>\n\nYangi banner qo'shing!"
+
+    await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+
+
+@dp.callback_query(F.data == "banner_add")
+async def banner_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
     await state.set_state(AddBannerState.title)
-    await message.answer("🖼 <b>Yangi banner qo'shish</b>\n\n📝 Banner sarlavhasini kiriting:\n<i>Masalan: Yoz mavsumi chegirmalari</i>", parse_mode="HTML")
+    await callback.message.answer("🖼 <b>Yangi banner qo'shish</b>\n\n📝 Banner sarlavhasini kiriting:\n<i>Masalan: Yoz mavsumi chegirmalari</i>", parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("banner_del_"))
+async def banner_delete(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID: return
+    bid = int(callback.data.split("_")[2])
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute("DELETE FROM banners WHERE id=$1", bid)
+    await callback.answer("✅ Banner o'chirildi!", show_alert=True)
+    await callback.message.delete()
+
+@dp.callback_query(F.data.startswith("banner_edit_"))
+async def banner_edit(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    bid = int(callback.data.split("_")[2])
+    await state.update_data(edit_banner_id=bid)
+    b = InlineKeyboardBuilder()
+    b.button(text="📝 Sarlavha", callback_data=f"bedit_title_{bid}")
+    b.button(text="📄 Tavsif", callback_data=f"bedit_sub_{bid}")
+    b.button(text="🏷 Tag", callback_data=f"bedit_tag_{bid}")
+    b.button(text="🖼 Rasm URL", callback_data=f"bedit_image_{bid}")
+    b.button(text="📂 Kategoriya", callback_data=f"bedit_cat_{bid}")
+    b.button(text="✅ Yoq/O'ch", callback_data=f"bedit_toggle_{bid}")
+    b.adjust(2)
+    await callback.message.answer(f"✏️ <b>Banner #{bid}</b> ni tahrirlash:", reply_markup=b.as_markup(), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("bedit_toggle_"))
+async def banner_toggle(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID: return
+    bid = int(callback.data.split("_")[2])
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        ban = await db_conn.fetchrow("SELECT is_active FROM banners WHERE id=$1", bid)
+        new_status = 0 if ban['is_active'] else 1
+        await db_conn.execute("UPDATE banners SET is_active=$1 WHERE id=$2", new_status, bid)
+    status = "✅ Yoqildi" if new_status else "❌ O'chirildi"
+    await callback.answer(f"Banner {status}!", show_alert=True)
+
+@dp.callback_query(F.data.startswith("bedit_"))
+async def banner_edit_field(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    parts = callback.data.split("_")
+    field, bid = parts[1], int(parts[2])
+    await state.update_data(edit_banner_id=bid, edit_banner_field=field)
+    await state.set_state(AddBannerState.title)  # reuse state for editing
+    prompts = {
+        "title": "📝 Yangi sarlavha kiriting:",
+        "sub": "📄 Yangi tavsif (yoq: Yoq):",
+        "tag": "🏷 Yangi tag (yoq: Yoq):",
+        "image": "🖼 Yangi rasm URL kiriting:",
+        "cat": "📂 Yangi kategoriya ID (0=barchasi):",
+    }
+    await callback.message.answer(prompts.get(field, "Yangi qiymat:"))
 
 @dp.message(AddBannerState.title)
-async def banner_title(message: Message, state: FSMContext):
+async def banner_title_or_edit(message: Message, state: FSMContext):
+    data = await state.get_data()
+    # Agar tahrirlash rejimida bo'lsa
+    if 'edit_banner_field' in data:
+        field = data['edit_banner_field']
+        bid = data['edit_banner_id']
+        value = None if message.text.lower() in ["yoq","-"] else message.text
+        if field == "cat":
+            try: value = int(message.text)
+            except: value = 0
+            field = "cat_id"
+        p = await get_pool()
+        async with p.acquire() as db_conn:
+            await db_conn.execute(f"UPDATE banners SET {field}=$1 WHERE id=$2", value, bid)
+        await state.clear()
+        await message.answer(f"✅ Banner #{bid} yangilandi!", reply_markup=admin_kb())
+        return
+    # Yangi banner qo'shish
     await state.update_data(title=message.text)
     await state.set_state(AddBannerState.sub)
     await message.answer("📄 Qisqa tavsif kiriting (yoq: Yoq):\n<i>Masalan: 30% gacha chegirma</i>", parse_mode="HTML")
@@ -965,11 +1059,10 @@ async def banner_sub(message: Message, state: FSMContext):
 async def banner_tag(message: Message, state: FSMContext):
     await state.update_data(tag=None if message.text.lower() in ["yoq","-"] else message.text)
     await state.set_state(AddBannerState.image)
-    await message.answer("🖼 Banner rasmini yuboring yoki URL kiriting (yoq: Yoq):")
+    await message.answer("🖼 Banner rasm URL kiriting (yoq: Yoq):")
 
 @dp.message(AddBannerState.image, F.photo)
 async def banner_image_photo(message: Message, state: FSMContext):
-    # Telegram file_id saqlash (URL kerak bo'lsa alohida)
     await state.update_data(image_url=message.photo[-1].file_id)
     await _banner_ask_cat(message, state)
 
@@ -989,10 +1082,8 @@ async def _banner_ask_cat(message: Message, state: FSMContext):
 
 @dp.message(AddBannerState.cat_id)
 async def banner_cat(message: Message, state: FSMContext):
-    try:
-        cat_id = int(message.text)
-    except:
-        cat_id = 0
+    try: cat_id = int(message.text)
+    except: cat_id = 0
     data = await state.get_data()
     p = await get_pool()
     async with p.acquire() as db_conn:
@@ -1005,8 +1096,7 @@ async def banner_cat(message: Message, state: FSMContext):
         f"✅ <b>Banner qo'shildi!</b>\n\n"
         f"📝 {data['title']}\n"
         f"🏷 {data.get('tag') or '-'}\n"
-        f"📂 Kategoriya: {cat_id or 'Barchasi'}\n\n"
-        f"Mini App da ko'rish uchun sahifani yangilang.",
+        f"📂 Kategoriya: {cat_id or 'Barchasi'}",
         reply_markup=admin_kb(), parse_mode="HTML"
     )
 
