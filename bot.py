@@ -1,4 +1,3 @@
-# v2
 import asyncio
 import logging
 import json
@@ -527,6 +526,46 @@ async def api_cancel_order(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
+async def api_user_info(request):
+    """Mijoz ma'lumotlarini qaytaradi (telegram_id bo'yicha)"""
+    try:
+        telegram_id = request.rel_url.query.get('telegram_id')
+        if not telegram_id:
+            return web.Response(
+                text=json.dumps({"error": "telegram_id kerak"}),
+                content_type="application/json", status=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        p = await get_pool()
+        async with p.acquire() as db_conn:
+            user = await db_conn.fetchrow(
+                "SELECT * FROM users WHERE telegram_id=$1", int(telegram_id)
+            )
+        if not user:
+            return web.Response(
+                text=json.dumps({"user": None}),
+                content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+        return web.Response(
+            text=json.dumps({
+                "user": {
+                    "telegram_id": user['telegram_id'],
+                    "full_name": user['full_name'],
+                    "username": user['username'],
+                    "phone": user['phone'],
+                }
+            }, ensure_ascii=False),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json", status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+
 async def api_health(request):
     return web.Response(text="OK", headers={"Access-Control-Allow-Origin": "*"})
 
@@ -534,11 +573,11 @@ async def start_api_server():
     app = web.Application()
     app.router.add_get("/api/products", api_products)
     app.router.add_get("/api/orders", api_orders)
+    app.router.add_get("/api/user", api_user_info)
     app.router.add_post("/api/orders/create", api_create_order)
     app.router.add_post("/api/orders/cancel", api_cancel_order)
     app.router.add_get("/health", api_health)
 
-    # CORS — barcha yo'llarga OPTIONS
     async def handle_options(request):
         return web.Response(headers={
             "Access-Control-Allow-Origin": "*",
@@ -549,6 +588,7 @@ async def start_api_server():
     app.router.add_route("OPTIONS", "/api/orders/cancel", handle_options)
     app.router.add_route("OPTIONS", "/api/products", handle_options)
     app.router.add_route("OPTIONS", "/api/orders", handle_options)
+    app.router.add_route("OPTIONS", "/api/user", handle_options)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -694,24 +734,80 @@ class BroadcastState(StatesGroup):
 STATUS_EMOJI = {"yangi": "🆕", "yigilmoqda": "📦", "yetkazilmoqda": "🚚", "yetkazildi": "✅", "bekor": "❌"}
 
 
+class RegisterState(StatesGroup):
+    waiting_phone = State()
+
 # ===== START =====
 @dp.message(CommandStart())
-async def start(message: Message):
+async def start(message: Message, state: FSMContext):
     user = message.from_user
     await db.add_user(user.id, user.full_name, user.username)
+
+    # Telefon raqami bormi tekshir
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        existing = await db_conn.fetchrow(
+            "SELECT phone FROM users WHERE telegram_id=$1", user.id
+        )
+
     mini_app_url = f"{MINI_APP_URL}?tid={user.id}"
     text = (
         f"👋 Assalomu alaykum, <b>{user.first_name}</b>!\n\n"
         f"🔧 <b>Sarichashma Santexnika</b> botiga xush kelibsiz!\n\n"
         f"Bizda mavjud:\n🚿 Santexnika mahsulotlari\n⚡ Elektrika mahsulotlari\n\n"
         f"📍 Samarqand viloyati, Jomboy tuman, Sarichashma qishloq\n"
-        f"⏰ Ish vaqti: 07:00 - 20:00\n\nQuyidagi menyudan tanlang:"
+        f"⏰ Ish vaqti: 07:00 - 20:00"
     )
+
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="🛒 Do'konni ochish", web_app=WebAppInfo(url=mini_app_url)))
     kb.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
     kb.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
-    await message.answer(text, reply_markup=kb.as_markup(resize_keyboard=True), parse_mode="HTML")
+
+    if not existing or not existing['phone']:
+        # Telefon raqami yo'q — so'raymiz
+        await message.answer(text, parse_mode="HTML")
+        phone_kb = ReplyKeyboardBuilder()
+        phone_kb.add(KeyboardButton(text="📱 Raqamimni yuborish", request_contact=True))
+        await message.answer(
+            "📱 Telefon raqamingizni yuboring — buyurtmalaringiz uchun kerak bo'ladi:",
+            reply_markup=phone_kb.as_markup(resize_keyboard=True)
+        )
+        await state.set_state(RegisterState.waiting_phone)
+    else:
+        await message.answer(
+            text + "\n\nQuyidagi menyudan tanlang:",
+            reply_markup=kb.as_markup(resize_keyboard=True),
+            parse_mode="HTML"
+        )
+
+@dp.message(RegisterState.waiting_phone, F.contact)
+async def register_phone(message: Message, state: FSMContext):
+    await db.update_user_phone(message.from_user.id, message.contact.phone_number)
+    await state.clear()
+    mini_app_url = f"{MINI_APP_URL}?tid={message.from_user.id}"
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🛒 Do'konni ochish", web_app=WebAppInfo(url=mini_app_url)))
+    kb.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
+    kb.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
+    await message.answer(
+        f"✅ Rahmat! Raqamingiz saqlandi.\n\nQuyidagi menyudan tanlang:",
+        reply_markup=kb.as_markup(resize_keyboard=True)
+    )
+
+@dp.message(RegisterState.waiting_phone, F.text)
+async def register_phone_text(message: Message, state: FSMContext):
+    await db.update_user_phone(message.from_user.id, message.text)
+    await state.clear()
+    mini_app_url = f"{MINI_APP_URL}?tid={message.from_user.id}"
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🛒 Do'konni ochish", web_app=WebAppInfo(url=mini_app_url)))
+    kb.row(KeyboardButton(text="📦 Buyurtmalarim"), KeyboardButton(text="🎉 Aksiyalar"))
+    kb.row(KeyboardButton(text="📞 Boglanish"), KeyboardButton(text="ℹ️ Haqimizda"))
+    await message.answer(
+        "✅ Rahmat! Raqamingiz saqlandi.\n\nQuyidagi menyudan tanlang:",
+        reply_markup=kb.as_markup(resize_keyboard=True)
+    )
 
 
 # ===== CATALOG =====
