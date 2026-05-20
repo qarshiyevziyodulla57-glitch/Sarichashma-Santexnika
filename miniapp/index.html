@@ -508,6 +508,7 @@ let ordersLoaded=false;
 // ── INIT ──
 async function init(){
   loadProfile();
+  loadUserInfo();
   await loadData();
 }
 
@@ -531,6 +532,18 @@ async function loadData(){
       `<div class="error-box" style="grid-column:span 2">❌ ${e.message}<br>
       <button onclick="loadData()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;margin-top:8px;font-weight:700;font-family:Nunito,sans-serif">🔄 Qayta</button></div>`;
   }
+}
+
+async function loadUserInfo(){
+  const tid = tg?.initDataUnsafe?.user?.id || new URLSearchParams(window.location.search).get('tid');
+  if(!tid) return;
+  try{
+    const res = await fetch(`${API_BASE}/api/user?telegram_id=${tid}`);
+    const data = await res.json();
+    if(data.user && data.user.phone){
+      document.getElementById('profilePhone').textContent = data.user.phone;
+    }
+  }catch(e){}
 }
 
 function loadProfile(){
