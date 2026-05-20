@@ -855,6 +855,15 @@ async function loadOrders(){
           <span style="flex:1;margin-right:8px">${i.name}</span>
           <span>${i.qty} x ${i.price.toLocaleString()} = <b>${(i.qty*i.price).toLocaleString()}</b></span>
         </div>`).join('');
+      // Faqat "yangi" holatda bekor qilish tugmasi ko'rinadi
+      const cancelBtn = o.status === 'yangi'
+        ? `<button onclick="cancelOrder(${o.id})" style="
+            background:none;border:2px solid var(--red);color:var(--red);
+            padding:6px 14px;border-radius:8px;font-size:12px;font-weight:800;
+            cursor:pointer;font-family:Nunito,sans-serif;margin-top:8px;width:100%">
+            ❌ Buyurtmani bekor qilish
+          </button>`
+        : '';
       return `<div class="order-card ${st.cls}">
         <div class="order-head"><span class="order-num">Buyurtma #${o.id}</span><span class="order-date">${o.created_at}</span></div>
         <span class="status-badge ${st.cls}">${st.label}</span>
@@ -863,6 +872,7 @@ async function loadOrders(){
           <span class="order-total">${o.total_price.toLocaleString()} so'm</span>
           <span class="order-addr">📍 ${o.address||'-'}</span>
         </div>
+        ${cancelBtn}
       </div>`;
     }).join('');
   }catch(e){
@@ -936,6 +946,27 @@ function addFromDetail(){
   updateDetailBtn(currentDetailId);updateBadge();renderProds();
 }
 function closeDetail(){document.getElementById('detailEl').classList.remove('open');}
+
+async function cancelOrder(orderId){
+  const tid = tg?.initDataUnsafe?.user?.id || new URLSearchParams(window.location.search).get('tid');
+  if(!confirm('❌ Buyurtma #'+orderId+' ni bekor qilmoqchimisiz?')) return;
+  try{
+    const res = await fetch(`${API_BASE}/api/orders/cancel`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order_id: orderId, telegram_id: tid})
+    });
+    const data = await res.json();
+    if(data.success){
+      alert('✅ Buyurtma bekor qilindi!');
+      loadOrders(); // Ro'yxatni yangilash
+    } else {
+      alert('❌ '+( data.error||'Xatolik yuz berdi'));
+    }
+  }catch(e){
+    alert('❌ Xatolik: '+e.message);
+  }
+}
 
 // ── TABS ──
 function switchTab(tab){
