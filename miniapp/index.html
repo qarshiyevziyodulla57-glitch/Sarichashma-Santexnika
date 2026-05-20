@@ -210,7 +210,45 @@ body{
 .empty-icon{font-size:56px;margin-bottom:14px;opacity:.4}
 .empty p{font-size:14px;font-weight:600;line-height:1.6}
 
-/* ── ORDER PAGE ── */
+/* ── ORDERS PAGE ── */
+.orders-page{padding:16px}
+.order-card{
+  background:var(--card);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:12px;
+  box-shadow:var(--shadow-card);
+  border-left:4px solid var(--border);
+}
+.order-card.yangi{border-left-color:#f59e0b}
+.order-card.yigilmoqda{border-left-color:#3b82f6}
+.order-card.yetkazilmoqda{border-left-color:#8b5cf6}
+.order-card.yetkazildi{border-left-color:#10b981}
+.order-card.bekor{border-left-color:var(--red)}
+.order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.order-num{font-size:14px;font-weight:800;color:var(--text)}
+.order-date{font-size:11px;color:var(--muted);font-weight:600}
+.status-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:20px;
+  font-size:11px;font-weight:800;
+}
+.status-badge.yangi{background:#fef3c7;color:#d97706}
+.status-badge.yigilmoqda{background:#dbeafe;color:#2563eb}
+.status-badge.yetkazilmoqda{background:#ede9fe;color:#7c3aed}
+.status-badge.yetkazildi{background:#d1fae5;color:#059669}
+.status-badge.bekor{background:#fee2e2;color:var(--red)}
+.order-items{margin-bottom:10px}
+.order-item-row{
+  display:flex;justify-content:space-between;
+  font-size:12px;padding:4px 0;
+  border-bottom:1px dashed var(--border);color:var(--muted);font-weight:600;
+}
+.order-item-row:last-child{border-bottom:none}
+.order-item-name{flex:1;margin-right:8px}
+.order-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.order-total{font-size:15px;font-weight:800;color:var(--blue)}
+.order-addr{font-size:11px;color:var(--muted);font-weight:600}
+
+/* ── ORDER FORM PAGE ── */
 .order-page{padding:16px}
 .order-section{
   background:var(--card);border-radius:var(--radius);
@@ -534,6 +572,12 @@ body{
   <div class="cart-page" id="cartContent"></div>
 </div>
 
+<div id="page-orders" class="page">
+  <div class="orders-page" id="ordersContent">
+    <div class="loading"><div class="spin"></div><br>Yuklanmoqda...</div>
+  </div>
+</div>
+
 <div id="page-order" class="page">
   <div class="order-page">
     <div class="order-section">
@@ -650,9 +694,9 @@ body{
     Savat
     <span class="nav-badge" id="cNavBadge"></span>
   </button>
-  <button class="nav-item" onclick="switchTab('order')" id="nav-order">
+  <button class="nav-item" onclick="switchTab('orders')" id="nav-orders">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    Buyurtma
+    Buyurtmalar
   </button>
   <button class="nav-item" onclick="switchTab('promos')" id="nav-promos">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1001,6 +1045,60 @@ function addFromDetail(){
 }
 function closeDetail(){document.getElementById('detailEl').classList.remove('open');}
 
+// ── ORDERS ──
+const STATUS_INFO = {
+  'yangi':        {label:'🆕 Yangi',         cls:'yangi'},
+  'yigilmoqda':   {label:'📦 Yig\'ilmoqda',  cls:'yigilmoqda'},
+  'yetkazilmoqda':{label:'🚚 Yetkazilmoqda', cls:'yetkazilmoqda'},
+  'yetkazildi':   {label:'✅ Yetkazildi',    cls:'yetkazildi'},
+  'bekor':        {label:'❌ Bekor',          cls:'bekor'},
+};
+
+async function loadOrders(){
+  const cont = document.getElementById('ordersContent');
+  const tid = tg?.initDataUnsafe?.user?.id;
+  if(!tid){
+    cont.innerHTML = `<div class="empty"><div class="empty-icon">👤</div><p>Buyurtmalarni ko'rish uchun<br>Telegram orqali kiring.</p></div>`;
+    return;
+  }
+  cont.innerHTML = `<div class="loading"><div class="spin"></div><br>Yuklanmoqda...</div>`;
+  try{
+    const res = await fetch(`${API_BASE}/api/orders?telegram_id=${tid}`);
+    if(!res.ok) throw new Error('Server xatosi');
+    const data = await res.json();
+    const orders = data.orders || [];
+    if(!orders.length){
+      cont.innerHTML = `<div class="empty"><div class="empty-icon">📦</div><p>Hali buyurtma bermadingiz.<br>Katalogdan mahsulot tanlang!</p></div>`;
+      return;
+    }
+    cont.innerHTML = orders.map(o => {
+      const st = STATUS_INFO[o.status] || {label: o.status, cls: 'yangi'};
+      const itemsHtml = o.items.map(i =>
+        `<div class="order-item-row">
+          <span class="order-item-name">${i.name}</span>
+          <span>${i.qty} x ${i.price.toLocaleString()} = <b>${(i.qty*i.price).toLocaleString()}</b></span>
+        </div>`
+      ).join('');
+      return `<div class="order-card ${st.cls}">
+        <div class="order-head">
+          <span class="order-num">Buyurtma #${o.id}</span>
+          <span class="order-date">${o.created_at}</span>
+        </div>
+        <span class="status-badge ${st.cls}">${st.label}</span>
+        <div class="order-items" style="margin-top:10px">${itemsHtml}</div>
+        <div class="order-footer">
+          <span class="order-total">${o.total_price.toLocaleString()} so'm</span>
+          <span class="order-addr">📍 ${o.address||'-'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    cont.innerHTML = `<div class="error-box">❌ Xatolik yuz berdi.<br>
+      <button onclick="loadOrders()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;margin-top:8px;font-weight:700;font-family:Nunito,sans-serif">🔄 Qayta</button>
+    </div>`;
+  }
+}
+
 // ── TABS ──
 function switchTab(tab){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1013,6 +1111,7 @@ function switchTab(tab){
   document.getElementById('catsWrap').style.display=isC?'block':'none';
   if(tab==='cart') renderCart();
   if(tab==='promos') loadPromos();
+  if(tab==='orders') loadOrders();
 }
 
 // ── ORDER ──
