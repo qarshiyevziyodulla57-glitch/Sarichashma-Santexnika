@@ -674,7 +674,11 @@ function hCard(p){
   </div>`;
 }
 
-function filterSale(){
+function getCatIcon(emoji){
+  if(!emoji) return '📦';
+  if(emoji.startsWith('http')) return `<img src="${emoji}" style="width:12px;height:12px;object-fit:cover;border-radius:2px;vertical-align:middle;">`;
+  return emoji;
+}
   switchTab('catalog');
   // Chegirmali filter
   currentCat = -1; // maxsus flag
@@ -699,7 +703,12 @@ function buildCatalogCats(){
     const d = document.createElement('div');
     d.className = 'cat-pill';
     d.dataset.id = c.id;
-    d.textContent = `${c.emoji} ${c.name}`;
+    const isUrl = c.emoji && c.emoji.startsWith('http');
+    if(isUrl){
+      d.innerHTML = `<img src="${c.emoji}" alt="${c.name}" style="width:16px;height:16px;object-fit:cover;border-radius:3px;"> ${c.name}`;
+    } else {
+      d.textContent = `${c.emoji||''} ${c.name}`;
+    }
     d.onclick = ()=>selectCat(c.id, c.name, d);
     el.appendChild(d);
   });
@@ -737,7 +746,7 @@ function pCard(p){
     </div>
     <div class="product-info">
       <div class="product-name">${p.name}</div>
-      <div class="product-cat">${p.cat_emoji||''} ${p.cat_name||''}</div>
+      <div class="product-cat">${getCatIcon(p.cat_emoji)} ${p.cat_name||''}</div>
       <div class="product-footer">
         <div>
           <div class="product-price">${p.price.toLocaleString()} so'm</div>
