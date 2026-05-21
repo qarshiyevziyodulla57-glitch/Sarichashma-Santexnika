@@ -394,6 +394,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       </div>
     </div>
     <div class="order-section">
+      <div class="order-section-title">🎟 Promokod</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="form-input" id="oPromo" placeholder="Promokod kiriting..." style="text-transform:uppercase;flex:1"/>
+        <button onclick="applyPromo()" style="background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border:none;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;font-family:Nunito,sans-serif">Qo'llash</button>
+      </div>
+      <div id="promoResult" style="margin-top:8px;font-size:13px;font-weight:700;display:none"></div>
+    </div>
+    <div class="order-section">
       <div class="order-section-title">📝 Izoh</div>
       <textarea class="form-input form-textarea" id="oNote" placeholder="Qo'shimcha izoh..."></textarea>
     </div>
@@ -1019,6 +1027,46 @@ function switchTab(tab){
   if(tab==='orders') loadOrders();
 }
 
+// ── PROMOCODE ──
+let appliedPromo = null;
+
+async function applyPromo(){
+  const code = document.getElementById('oPromo').value.trim().toUpperCase();
+  const result = document.getElementById('promoResult');
+  if(!code){ result.style.display='none'; return; }
+
+  const items = Object.keys(cart).map(id=>{
+    const p = PRODUCTS.find(x=>x.id==id);
+    return{price:p.price,qty:cart[id].qty};
+  });
+  const delivery = deliveryType==='Kuryer'?15000:0;
+  const total = items.reduce((s,i)=>s+i.price*i.qty,0)+delivery;
+
+  try{
+    const res = await fetch(`${API_BASE}/api/promo/check`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code, total})
+    });
+    const data = await res.json();
+    if(data.success){
+      appliedPromo = data;
+      result.style.display='block';
+      result.style.color='#0d6e56';
+      result.innerHTML = `✅ Promokod qo'llandi! Chegirma: <b>${data.discount_amount.toLocaleString()} so'm</b><br>Yangi summa: <b>${data.new_total.toLocaleString()} so'm</b>`;
+    } else {
+      appliedPromo = null;
+      result.style.display='block';
+      result.style.color='var(--red)';
+      result.innerHTML = `❌ ${data.error}`;
+    }
+  }catch(e){
+    result.style.display='block';
+    result.style.color='var(--red)';
+    result.innerHTML = '❌ Xatolik yuz berdi';
+  }
+}
+
 // ── ORDER ──
 function selDelivery(el,type){
   document.querySelectorAll('.d-opt').forEach(x=>x.classList.remove('sel'));
@@ -1049,7 +1097,15 @@ async function submitOrder(){
     return{product_id:p.id,name:p.name,price:p.price,qty:cart[id].qty};
   });
   const delivery=deliveryType==='Kuryer'?15000:0;
-  const total=items.reduce((s,i)=>s+i.price*i.qty,0)+delivery;
+  let total=items.reduce((s,i)=>s+i.price*i.qty,0)+delivery;
+  let promoCode = null;
+  let discount = 0;
+
+  if(appliedPromo){
+    promoCode = appliedPromo.code;
+    discount = appliedPromo.discount_amount;
+    total = appliedPromo.new_total;
+  }
 
   const orderData={
     name, phone,
@@ -1058,6 +1114,8 @@ async function submitOrder(){
     payment: payType,
     note: note||null,
     items, total,
+    promo_code: promoCode,
+    discount: discount,
     telegram_id: tg?.initDataUnsafe?.user?.id || new URLSearchParams(window.location.search).get('tid') || null,
     telegram_username: tg?.initDataUnsafe?.user?.username || null,
   };
