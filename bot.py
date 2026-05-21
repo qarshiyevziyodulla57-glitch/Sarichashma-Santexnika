@@ -1592,21 +1592,26 @@ async def cat_add_start(callback: CallbackQuery, state: FSMContext):
 async def cat_add_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(AddCategoryState.emoji)
-    await message.answer("😊 Emoji kiriting:\n<i>Masalan: 🚿 yoki 🔧</i>", parse_mode="HTML")
+    await message.answer(
+        "😊 Emoji yoki rasm URL kiriting:\n"
+        "<i>Masalan: 🚿 yoki https://i.postimg.cc/xxx/rasm.jpg</i>",
+        parse_mode="HTML"
+    )
 
 @dp.message(AddCategoryState.emoji)
 async def cat_add_emoji(message: Message, state: FSMContext):
     data = await state.get_data()
-    emoji = message.text.strip()
+    # Rasm URL yoki emoji qabul qiladi
+    emoji_or_url = message.text.strip()
     p = await get_pool()
     async with p.acquire() as db_conn:
         await db_conn.execute(
             "INSERT INTO categories (name, emoji) VALUES ($1, $2)",
-            data['name'], emoji
+            data['name'], emoji_or_url
         )
     await state.clear()
     await message.answer(
-        f"✅ <b>'{emoji} {data['name']}'</b> kategoriyasi qo'shildi!",
+        f"✅ <b>'{data['name']}'</b> kategoriyasi qo'shildi!",
         reply_markup=admin_kb(), parse_mode="HTML"
     )
 
