@@ -15,6 +15,9 @@ from aiogram.types import (
 )
 import asyncpg
 import os
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 from aiohttp import web
 
 logging.basicConfig(level=logging.INFO)
@@ -611,8 +614,9 @@ def admin_kb():
     b.row(KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📦 Buyurtmalar"))
     b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
     b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="🖼 Banner qoshish"))
-    b.row(KeyboardButton(text="📋 Mijozlar hisoboti"), KeyboardButton(text="👥 Mijozlar"))
-    b.row(KeyboardButton(text="📢 Xabar yuborish"), KeyboardButton(text="🔙 Asosiy menyu"))
+    b.row(KeyboardButton(text="📂 Kategoriyalar"), KeyboardButton(text="📋 Mijozlar hisoboti"))
+    b.row(KeyboardButton(text="👥 Mijozlar"), KeyboardButton(text="📢 Xabar yuborish"))
+    b.row(KeyboardButton(text="🔙 Asosiy menyu"))
     return b.as_markup(resize_keyboard=True)
 
 def categories_kb(categories):
@@ -720,6 +724,15 @@ class AddBannerState(StatesGroup):
     tag = State()
     image = State()
     cat_id = State()
+
+class AddCategoryState(StatesGroup):
+    name = State()
+    emoji = State()
+
+class EditCategoryState(StatesGroup):
+    select = State()
+    field = State()
+    value = State()
 
 class AddPromoState(StatesGroup):
     title = State()
@@ -1096,13 +1109,13 @@ async def ap_price(message: Message, state: FSMContext):
     try:
         await state.update_data(price=float(message.text.replace(" ", "").replace(",", "")))
         await state.set_state(AddProductState.old_price)
-        await message.answer("💸 Eski narxini kiriting (yoq bolsa: Yoq):")
+        await message.answer("💸 Eski narxini kiriting (ixtiyoriy, yoq bolsa: Enter yoki Yoq):")
     except:
         await message.answer("Togri narx kiriting!")
 
 @dp.message(AddProductState.old_price)
 async def ap_old_price(message: Message, state: FSMContext):
-    if message.text.lower() in ["yoq", "-"]:
+    if message.text.lower() in ["yoq", "-", "yo'q", ""]:
         await state.update_data(old_price=None)
     else:
         try:
@@ -1394,6 +1407,97 @@ async def banner_cat(message: Message, state: FSMContext):
         f"📂 Kategoriya: {cat_id or 'Barchasi'}",
         reply_markup=admin_kb(), parse_mode="HTML"
     )
+
+
+# ===== KATEGORIYA BOSHQARUVI =====
+@dp.message(F.text == "📂 Kategoriyalar")
+async def manage_categories(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+    cats = await db.get_categories()
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yangi kategoriya", callback_data="cat_add")
+    b.adjust(1)
+    for c in cats:
+        b.button(text=f"{c['emoji']} {c['name']}", callback_data=f"catedit_{c['id']}")
+        b.button(text="🗑", callback_data=f"catdel_{c['id']}")
+    b.adjust(1, *[2]*len(cats))
+    text = "📂 <b>Kategoriyalar:</b>\n\n"
+    for c in cats:
+        text += f"{c['emoji']} {c['name']} (ID: {c['id']})\n"
+    await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+
+@dp.callback_query(F.data == "cat_add")
+async def cat_add_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    await state.set_state(AddCategoryState.name)
+    await callback.message.answer("📝 Yangi kategoriya nomini kiriting:\n<i>Masalan: Vannalar</i>", parse_mode="HTML")
+
+@dp.message(AddCategoryState.name)
+async def cat_add_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(AddCategoryState.emoji)
+    await message.answer("😊 Emoji kiriting:\n<i>Masalan: 🚿 yoki 🔧</i>", parse_mode="HTML")
+
+@dp.message(AddCategoryState.emoji)
+async def cat_add_emoji(message: Message, state: FSMContext):
+    data = await state.get_data()
+    emoji = message.text.strip()
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute(
+            "INSERT INTO categories (name, emoji) VALUES ($1, $2)",
+            data['name'], emoji
+        )
+    await state.clear()
+    await message.answer(
+        f"✅ <b>'{emoji} {data['name']}'</b> kategoriyasi qo'shildi!",
+        reply_markup=admin_kb(), parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("catdel_"))
+async def cat_delete(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID: return
+    cid = int(callback.data.split("_")[1])
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        cat = await db_conn.fetchrow("SELECT name FROM categories WHERE id=$1", cid)
+        # Kategoriyani o'chirish emas, is_active=0 qilamiz
+        await db_conn.execute("UPDATE categories SET is_active=0 WHERE id=$1", cid)
+    await callback.answer(f"✅ '{cat['name']}' o'chirildi!", show_alert=True)
+    await callback.message.delete()
+
+@dp.callback_query(F.data.startswith("catedit_"))
+async def cat_edit(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    cid = int(callback.data.split("_")[1])
+    await state.update_data(edit_cat_id=cid)
+    b = InlineKeyboardBuilder()
+    b.button(text="📝 Nom", callback_data=f"catfield_name_{cid}")
+    b.button(text="😊 Emoji", callback_data=f"catfield_emoji_{cid}")
+    b.adjust(2)
+    await callback.message.answer(f"✏️ Kategoriya #{cid} ni tahrirlash:", reply_markup=b.as_markup())
+
+@dp.callback_query(F.data.startswith("catfield_"))
+async def cat_edit_field(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    parts = callback.data.split("_")
+    field, cid = parts[1], int(parts[2])
+    await state.update_data(edit_cat_field=field, edit_cat_id=cid)
+    await state.set_state(EditCategoryState.value)
+    prompts = {"name": "📝 Yangi nom:", "emoji": "😊 Yangi emoji:"}
+    await callback.message.answer(prompts.get(field, "Yangi qiymat:"))
+
+@dp.message(EditCategoryState.value)
+async def cat_edit_value(message: Message, state: FSMContext):
+    data = await state.get_data()
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute(
+            f"UPDATE categories SET {data['edit_cat_field']}=$1 WHERE id=$2",
+            message.text.strip(), data['edit_cat_id']
+        )
+    await state.clear()
+    await message.answer("✅ Kategoriya yangilandi!", reply_markup=admin_kb())
 
 
 # ===== PROMO ADMIN =====
