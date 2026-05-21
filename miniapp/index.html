@@ -679,9 +679,10 @@ function getCatIcon(emoji){
   if(emoji.startsWith('http')) return `<img src="${emoji}" style="width:12px;height:12px;object-fit:cover;border-radius:2px;vertical-align:middle;">`;
   return emoji;
 }
+
+function filterSale(){
   switchTab('catalog');
-  // Chegirmali filter
-  currentCat = -1; // maxsus flag
+  currentCat = -1;
   document.querySelectorAll('.cat-pill').forEach(x=>x.classList.remove('active'));
   document.getElementById('catLabel').textContent = '🔥 Chegirmali mahsulotlar';
   const sale = PRODUCTS.filter(p=>p.old_price&&p.old_price>p.price&&p.stock>0);
