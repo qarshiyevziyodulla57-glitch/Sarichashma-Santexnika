@@ -621,12 +621,16 @@ function bannerClick(catId){
 // ── HOME CATS ──
 function buildHomeCats(){
   const el = document.getElementById('homeCatsGrid');
-  el.innerHTML = CATS.slice(0,8).map(c=>
-    `<div class="cat-card" onclick="goToCat(${c.id})">
-      <div class="cat-card-icon">${c.emoji}</div>
+  el.innerHTML = CATS.slice(0,8).map(c=>{
+    const isUrl = c.emoji && c.emoji.startsWith('http');
+    const icon = isUrl
+      ? `<img src="${c.emoji}" alt="${c.name}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;" onerror="this.outerHTML='📦'">`
+      : `<span style="font-size:26px">${c.emoji||'📦'}</span>`;
+    return `<div class="cat-card" onclick="goToCat(${c.id})">
+      <div class="cat-card-icon">${icon}</div>
       <div class="cat-card-name">${c.name}</div>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 function goToCat(id){
