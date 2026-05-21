@@ -613,6 +613,7 @@ def admin_kb():
     b = ReplyKeyboardBuilder()
     b.row(KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📦 Buyurtmalar"))
     b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
+    b.row(KeyboardButton(text="📥 Excel import"), KeyboardButton(text="📤 Excel eksport"))
     b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="🖼 Banner qoshish"))
     b.row(KeyboardButton(text="📂 Kategoriyalar"), KeyboardButton(text="📋 Mijozlar hisoboti"))
     b.row(KeyboardButton(text="👥 Mijozlar"), KeyboardButton(text="📢 Xabar yuborish"))
@@ -1156,7 +1157,162 @@ async def ap_image_text(message: Message, state: FSMContext):
     await message.answer(f"✅ <b>'{data['name']}'</b> qoshildi!", reply_markup=admin_kb(), parse_mode="HTML")
 
 
-# ===== MANAGE PRODUCTS =====
+# ===== EXCEL IMPORT / EKSPORT =====
+@dp.message(F.text == "📥 Excel import")
+async def excel_import_info(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+    cats = await db.get_categories()
+    cat_text = "\n".join([f"  {c['id']} — {c['emoji']} {c['name']}" for c in cats])
+
+    # Namuna Excel fayl yaratish
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Mahsulotlar"
+
+    # Header
+    headers = ["Kategoriya ID", "Nom", "Tavsif", "Narx", "Eski narx (ixtiyoriy)", "Ombor", "Rasm URL (ixtiyoriy)"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="1a5fb4")
+        cell.alignment = Alignment(horizontal="center")
+
+    # Namuna qator
+    ws.append([1, "Namuna kran", "Sifatli kran", 50000, 60000, 10, "https://example.com/rasm.jpg"])
+    ws.append([1, "Yana bir mahsulot", "", 30000, "", 5, ""])
+
+    # Ustun kengligi
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 30
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 20
+    ws.column_dimensions['F'].width = 10
+    ws.column_dimensions['G'].width = 35
+
+    # Fayl yuborish
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    await message.answer_document(
+        document=("mahsulotlar_shablon.xlsx", buf),
+        caption=(
+            f"📥 <b>Excel import shablon</b>\n\n"
+            f"Quyidagi kategoriya IDlaridan foydalaning:\n{cat_text}\n\n"
+            f"<b>Qoidalar:</b>\n"
+            f"• Kategoriya ID — majburiy\n"
+            f"• Nom — majburiy\n"
+            f"• Narx — majburiy (so'mda)\n"
+            f"• Eski narx — ixtiyoriy (bo'sh qoldirsa bo'ladi)\n"
+            f"• Ombor — majburiy (dona)\n"
+            f"• Rasm URL — ixtiyoriy\n\n"
+            f"Shablonni to'ldirib menga yuboring!"
+        ),
+        parse_mode="HTML"
+    )
+
+@dp.message(F.document)
+async def handle_excel_import(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+    if not message.document.file_name.endswith('.xlsx'):
+        return
+
+    await message.answer("⏳ Excel fayl yuklanmoqda...")
+
+    # Faylni yuklab olish
+    file = await bot.get_file(message.document.file_id)
+    buf = io.BytesIO()
+    await bot.download_file(file.file_path, buf)
+    buf.seek(0)
+
+    try:
+        wb = openpyxl.load_workbook(buf)
+        ws = wb.active
+
+        success = 0
+        errors = 0
+        error_rows = []
+
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not any(row): continue  # Bo'sh qator
+
+            try:
+                cat_id = int(row[0]) if row[0] else None
+                name = str(row[1]).strip() if row[1] else None
+                description = str(row[2]).strip() if row[2] else None
+                price = float(str(row[3]).replace(" ","").replace(",","")) if row[3] else None
+                old_price = float(str(row[4]).replace(" ","").replace(",","")) if row[4] else None
+                stock = int(row[5]) if row[5] else 0
+                image_url = str(row[6]).strip() if row[6] else None
+
+                if not cat_id or not name or not price:
+                    errors += 1
+                    error_rows.append(f"  {row_num}-qator: majburiy maydon bo'sh")
+                    continue
+
+                await db.add_product(cat_id, name, description, price, stock, old_price, image_url)
+                success += 1
+
+            except Exception as e:
+                errors += 1
+                error_rows.append(f"  {row_num}-qator: {str(e)[:50]}")
+
+        result = f"✅ <b>Import tugadi!</b>\n\n✅ Muvaffaqiyatli: {success} ta\n❌ Xato: {errors} ta"
+        if error_rows:
+            result += "\n\n<b>Xatolar:</b>\n" + "\n".join(error_rows[:10])
+
+        await message.answer(result, parse_mode="HTML", reply_markup=admin_kb())
+
+    except Exception as e:
+        await message.answer(f"❌ Fayl o'qishda xatolik: {e}", reply_markup=admin_kb())
+
+
+@dp.message(F.text == "📤 Excel eksport")
+async def excel_export(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+    await message.answer("⏳ Excel fayl tayyorlanmoqda...")
+
+    products = await db.get_all_products()
+    if not products:
+        await message.answer("Mahsulotlar yo'q!")
+        return
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Mahsulotlar"
+
+    headers = ["ID", "Kategoriya ID", "Nom", "Tavsif", "Narx", "Eski narx", "Ombor", "Rasm URL", "Kategoriya"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="1a5fb4")
+        cell.alignment = Alignment(horizontal="center")
+
+    for p in products:
+        ws.append([
+            p['id'], p['category_id'], p['name'],
+            p['description'] or "",
+            p['price'], p['old_price'] or "",
+            p['stock'], p['image_url'] or "",
+            f"{p['cat_emoji']} {p['cat_name']}"
+        ])
+
+    ws.column_dimensions['A'].width = 6
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 30
+    ws.column_dimensions['H'].width = 35
+    ws.column_dimensions['I'].width = 20
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    await message.answer_document(
+        document=("mahsulotlar_eksport.xlsx", buf),
+        caption=f"📤 <b>Mahsulotlar eksport</b>\n\nJami: {len(products)} ta mahsulot",
+        parse_mode="HTML"
+    )
 @dp.message(F.text == "🗂 Mahsulotlar")
 async def manage_products(message: Message):
     if message.from_user.id != ADMIN_ID: return
