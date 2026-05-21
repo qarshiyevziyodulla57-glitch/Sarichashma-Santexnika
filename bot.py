@@ -117,6 +117,19 @@ class Database:
                     is_active INTEGER DEFAULT 1,
                     expires_at TEXT
                 )""")
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS promocodes (
+                    id SERIAL PRIMARY KEY,
+                    code TEXT UNIQUE NOT NULL,
+                    discount_type TEXT DEFAULT 'percent',
+                    discount_value REAL NOT NULL,
+                    min_order REAL DEFAULT 0,
+                    max_uses INTEGER DEFAULT 0,
+                    used_count INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    expires_at TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""")
 
             count = await db.fetchval("SELECT COUNT(*) FROM categories")
             if count == 0:
@@ -341,15 +354,33 @@ async def api_create_order(request):
         telegram_id = data.get("telegram_id")
         username    = data.get("telegram_username")
 
+        promo_code = data.get("promo_code")
+        discount   = data.get("discount", 0)
+
         if telegram_id:
             await db.add_user(int(telegram_id), name, username)
 
         uid = int(telegram_id) if telegram_id else 0
+        note_text = f"To'lov: {payment}"
+        if promo_code:
+            note_text += f" | Promokod: {promo_code} (-{discount:,.0f} so'm)"
+        if note:
+            note_text += f" | {note}"
+
         oid = await db.create_order(
             user_id=uid, items=items, total_price=total,
-            address=address, phone=phone,
-            note=f"To'lov: {payment} | {note or ''}"
+            address=address, phone=phone, note=note_text
         )
+
+        # Promokod ishlatilgan bo'lsa used_count ni oshir
+        if promo_code:
+            try:
+                p2 = await get_pool()
+                async with p2.acquire() as db_conn:
+                    await db_conn.execute(
+                        "UPDATE promocodes SET used_count=used_count+1 WHERE code=$1", promo_code
+                    )
+            except: pass
 
         items_text = "\n".join([f"• {i['name']} x{i['qty']} — {i['price']*i['qty']:,.0f} so'm" for i in items])
         order_text = (
@@ -569,6 +600,89 @@ async def api_user_info(request):
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
+async def api_check_promo(request):
+    """Promokodni tekshiradi"""
+    try:
+        data = await request.json()
+        code = data.get("code", "").strip().upper()
+        total = data.get("total", 0)
+
+        if not code:
+            return web.Response(
+                text=json.dumps({"error": "Kod kiriting"}),
+                content_type="application/json", status=400,
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        p = await get_pool()
+        async with p.acquire() as db_conn:
+            promo = await db_conn.fetchrow(
+                "SELECT * FROM promocodes WHERE code=$1 AND is_active=1", code
+            )
+
+        if not promo:
+            return web.Response(
+                text=json.dumps({"error": "Promokod topilmadi yoki amal qilmaydi"}),
+                content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        # Muddat tekshirish
+        if promo['expires_at']:
+            from datetime import datetime
+            try:
+                exp = datetime.strptime(promo['expires_at'], "%d.%m.%Y")
+                if datetime.now() > exp:
+                    return web.Response(
+                        text=json.dumps({"error": "Promokod muddati tugagan"}),
+                        content_type="application/json",
+                        headers={"Access-Control-Allow-Origin": "*"}
+                    )
+            except: pass
+
+        # Foydalanish soni tekshirish
+        if promo['max_uses'] > 0 and promo['used_count'] >= promo['max_uses']:
+            return web.Response(
+                text=json.dumps({"error": "Promokod foydalanish limiti tugagan"}),
+                content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        # Minimal buyurtma summasi
+        if total < promo['min_order']:
+            return web.Response(
+                text=json.dumps({"error": f"Minimal buyurtma summasi: {promo['min_order']:,.0f} so'm"}),
+                content_type="application/json",
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
+
+        # Chegirmani hisoblash
+        if promo['discount_type'] == 'percent':
+            discount = total * promo['discount_value'] / 100
+        else:
+            discount = promo['discount_value']
+
+        discount = min(discount, total)
+
+        return web.Response(
+            text=json.dumps({
+                "success": True,
+                "code": code,
+                "discount_type": promo['discount_type'],
+                "discount_value": promo['discount_value'],
+                "discount_amount": discount,
+                "new_total": total - discount,
+            }, ensure_ascii=False),
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            content_type="application/json", status=500,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+
 async def api_health(request):
     return web.Response(text="OK", headers={"Access-Control-Allow-Origin": "*"})
 
@@ -579,6 +693,7 @@ async def start_api_server():
     app.router.add_get("/api/user", api_user_info)
     app.router.add_post("/api/orders/create", api_create_order)
     app.router.add_post("/api/orders/cancel", api_cancel_order)
+    app.router.add_post("/api/promo/check", api_check_promo)
     app.router.add_get("/health", api_health)
 
     async def handle_options(request):
@@ -589,6 +704,7 @@ async def start_api_server():
         })
     app.router.add_route("OPTIONS", "/api/orders/create", handle_options)
     app.router.add_route("OPTIONS", "/api/orders/cancel", handle_options)
+    app.router.add_route("OPTIONS", "/api/promo/check", handle_options)
     app.router.add_route("OPTIONS", "/api/products", handle_options)
     app.router.add_route("OPTIONS", "/api/orders", handle_options)
     app.router.add_route("OPTIONS", "/api/user", handle_options)
@@ -615,9 +731,9 @@ def admin_kb():
     b.row(KeyboardButton(text="➕ Mahsulot qoshish"), KeyboardButton(text="🗂 Mahsulotlar"))
     b.row(KeyboardButton(text="📥 Excel import"), KeyboardButton(text="📤 Excel eksport"))
     b.row(KeyboardButton(text="🎉 Aksiya qoshish"), KeyboardButton(text="🖼 Banner qoshish"))
-    b.row(KeyboardButton(text="📂 Kategoriyalar"), KeyboardButton(text="📋 Mijozlar hisoboti"))
-    b.row(KeyboardButton(text="👥 Mijozlar"), KeyboardButton(text="📢 Xabar yuborish"))
-    b.row(KeyboardButton(text="🔙 Asosiy menyu"))
+    b.row(KeyboardButton(text="🎟 Promokod"), KeyboardButton(text="📂 Kategoriyalar"))
+    b.row(KeyboardButton(text="📋 Mijozlar hisoboti"), KeyboardButton(text="👥 Mijozlar"))
+    b.row(KeyboardButton(text="📢 Xabar yuborish"), KeyboardButton(text="🔙 Asosiy menyu"))
     return b.as_markup(resize_keyboard=True)
 
 def categories_kb(categories):
@@ -734,6 +850,14 @@ class EditCategoryState(StatesGroup):
     select = State()
     field = State()
     value = State()
+
+class AddPromoCodeState(StatesGroup):
+    code = State()
+    discount_type = State()
+    discount_value = State()
+    min_order = State()
+    max_uses = State()
+    expires = State()
 
 class AddPromoState(StatesGroup):
     title = State()
@@ -1659,6 +1783,155 @@ async def cat_edit_value(message: Message, state: FSMContext):
         )
     await state.clear()
     await message.answer("✅ Kategoriya yangilandi!", reply_markup=admin_kb())
+
+
+# ===== PROMOKOD BOSHQARUVI =====
+@dp.message(F.text == "🎟 Promokod")
+async def promo_code_menu(message: Message):
+    if message.from_user.id != ADMIN_ID: return
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        codes = await db_conn.fetch("SELECT * FROM promocodes ORDER BY created_at DESC")
+
+    b = InlineKeyboardBuilder()
+    b.button(text="➕ Yangi promokod", callback_data="promo_add")
+    b.adjust(1)
+
+    if codes:
+        text = "🎟 <b>Promokodlar:</b>\n\n"
+        for c in codes:
+            status = "✅" if c['is_active'] else "❌"
+            dtype = "%" if c['discount_type'] == 'percent' else "so'm"
+            text += f"{status} <b>{c['code']}</b> — {c['discount_value']}{dtype}"
+            if c['max_uses'] > 0:
+                text += f" | {c['used_count']}/{c['max_uses']} marta"
+            if c['expires_at']:
+                text += f" | {c['expires_at']} gacha"
+            text += "\n"
+            b.button(text=f"🗑 {c['code']}", callback_data=f"promo_del_{c['id']}")
+            b.button(text=f"{'❌' if c['is_active'] else '✅'} Yoq/O'ch", callback_data=f"promo_toggle_{c['id']}")
+        b.adjust(1, *[2]*len(codes))
+    else:
+        text = "🎟 <b>Hozircha promokodlar yo'q.</b>"
+
+    await message.answer(text, reply_markup=b.as_markup(), parse_mode="HTML")
+
+
+@dp.callback_query(F.data == "promo_add")
+async def promo_code_add(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID: return
+    await state.set_state(AddPromoCodeState.code)
+    await callback.message.answer(
+        "🎟 <b>Yangi promokod yaratish</b>\n\n"
+        "📝 Promokod kiriting (katta harfda):\n"
+        "<i>Masalan: SALE20, YANGI10, VIP50</i>",
+        parse_mode="HTML"
+    )
+
+
+@dp.message(AddPromoCodeState.code)
+async def promo_code_enter(message: Message, state: FSMContext):
+    code = message.text.strip().upper()
+    await state.update_data(code=code)
+    await state.set_state(AddPromoCodeState.discount_type)
+    b = InlineKeyboardBuilder()
+    b.button(text="📊 Foiz (%)", callback_data="dtype_percent")
+    b.button(text="💰 Aniq summa (so'm)", callback_data="dtype_amount")
+    b.adjust(2)
+    await message.answer(
+        f"🎟 Kod: <b>{code}</b>\n\nChegirma turi:",
+        reply_markup=b.as_markup(), parse_mode="HTML"
+    )
+
+
+@dp.callback_query(F.data.startswith("dtype_"))
+async def promo_dtype(callback: CallbackQuery, state: FSMContext):
+    dtype = "percent" if callback.data == "dtype_percent" else "amount"
+    await state.update_data(discount_type=dtype)
+    await state.set_state(AddPromoCodeState.discount_value)
+    hint = "foiz (masalan: 20 → 20%)" if dtype == "percent" else "summa (masalan: 10000 → 10 000 so'm)"
+    await callback.message.answer(f"💰 Chegirma miqdorini kiriting — {hint}:")
+
+
+@dp.message(AddPromoCodeState.discount_value)
+async def promo_dvalue(message: Message, state: FSMContext):
+    try:
+        val = float(message.text.replace(" ", "").replace(",", ""))
+        await state.update_data(discount_value=val)
+        await state.set_state(AddPromoCodeState.min_order)
+        await message.answer("📦 Minimal buyurtma summasi (so'm):\n<i>Yo'q bo'lsa: 0 kiriting</i>", parse_mode="HTML")
+    except:
+        await message.answer("❗ Raqam kiriting!")
+
+
+@dp.message(AddPromoCodeState.min_order)
+async def promo_min(message: Message, state: FSMContext):
+    try:
+        val = float(message.text.replace(" ", "").replace(",", ""))
+        await state.update_data(min_order=val)
+        await state.set_state(AddPromoCodeState.max_uses)
+        await message.answer("🔢 Maksimal foydalanish soni:\n<i>Cheksiz bo'lsa: 0 kiriting</i>", parse_mode="HTML")
+    except:
+        await message.answer("❗ Raqam kiriting!")
+
+
+@dp.message(AddPromoCodeState.max_uses)
+async def promo_maxuses(message: Message, state: FSMContext):
+    try:
+        val = int(message.text.replace(" ", ""))
+        await state.update_data(max_uses=val)
+        await state.set_state(AddPromoCodeState.expires)
+        await message.answer("📅 Tugash sanasi (Yoq bo'lsa: Yoq):\n<i>Masalan: 31.12.2025</i>", parse_mode="HTML")
+    except:
+        await message.answer("❗ Raqam kiriting!")
+
+
+@dp.message(AddPromoCodeState.expires)
+async def promo_expires_code(message: Message, state: FSMContext):
+    expires = None if message.text.lower() in ["yoq", "-"] else message.text.strip()
+    data = await state.get_data()
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute(
+            "INSERT INTO promocodes (code, discount_type, discount_value, min_order, max_uses, expires_at) VALUES ($1,$2,$3,$4,$5,$6)",
+            data['code'], data['discount_type'], data['discount_value'],
+            data.get('min_order', 0), data.get('max_uses', 0), expires
+        )
+    await state.clear()
+    dtype = "%" if data['discount_type'] == 'percent' else " so'm"
+    await message.answer(
+        f"✅ <b>Promokod yaratildi!</b>\n\n"
+        f"🎟 Kod: <b>{data['code']}</b>\n"
+        f"💰 Chegirma: <b>{data['discount_value']}{dtype}</b>\n"
+        f"📦 Min. buyurtma: {data.get('min_order', 0):,.0f} so'm\n"
+        f"🔢 Limit: {'Cheksiz' if not data.get('max_uses') else str(data['max_uses'])+' marta'}\n"
+        f"📅 Tugash: {expires or 'Muddatsiz'}",
+        reply_markup=admin_kb(), parse_mode="HTML"
+    )
+
+
+@dp.callback_query(F.data.startswith("promo_del_"))
+async def promo_delete(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID: return
+    pid = int(callback.data.split("_")[2])
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        await db_conn.execute("DELETE FROM promocodes WHERE id=$1", pid)
+    await callback.answer("✅ Promokod o'chirildi!", show_alert=True)
+    await callback.message.delete()
+
+
+@dp.callback_query(F.data.startswith("promo_toggle_"))
+async def promo_toggle(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID: return
+    pid = int(callback.data.split("_")[2])
+    p = await get_pool()
+    async with p.acquire() as db_conn:
+        promo = await db_conn.fetchrow("SELECT is_active FROM promocodes WHERE id=$1", pid)
+        new_status = 0 if promo['is_active'] else 1
+        await db_conn.execute("UPDATE promocodes SET is_active=$1 WHERE id=$2", new_status, pid)
+    status = "✅ Yoqildi" if new_status else "❌ O'chirildi"
+    await callback.answer(f"Promokod {status}!", show_alert=True)
 
 
 # ===== PROMO ADMIN =====
